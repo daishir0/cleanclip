@@ -1,0 +1,53 @@
+{
+  "expo": {
+    "name": "CleanClip",
+    "slug": "cleanclip",
+    "scheme": "cleanclip",
+    "version": "1.0.0",
+    "orientation": "default",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1C1C1E"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "jp.path-finder.cleanclip",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "エントリデータへのアクセスにFace IDを使用します",
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1C1C1E"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store"
+    ],
+    "locales": {
+      "ja": "./i18n/native/ja.json",
+      "en": "./i18n/native/en.json"
+    },
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "50eae0b1-7df1-4a2b-ab8c-b4a590ae5c98"
+      }
+    },
+    "owner": "daishir0"
+  }
+}

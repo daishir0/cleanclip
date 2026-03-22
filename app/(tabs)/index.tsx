@@ -1,0 +1,114 @@
+import React, { useState, useCallback, useMemo } from 'react';
+import { View, FlatList, Text, TextInput, Pressable, StyleSheet, Alert } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { useApp } from '@/contexts/AppContext';
+import { useCopyFeedback } from '@/hooks/use-copy-feedback';
+import { useResponsive } from '@/hooks/use-responsive';
+import { useT } from '@/i18n';
+import { EntryCard } from '@/components/EntryCard';
+import { CopyFeedback } from '@/components/CopyFeedback';
+import { ClipEntry } from '@/types/clip';
+
+export default function EntryListScreen() {
+  const { entries, deleteEntry, reorderEntries, theme } = useApp();
+  const { copiedText, showFeedback, triggerCopy } = useCopyFeedback();
+  const { isTablet, numColumns } = useResponsive();
+  const { t } = useT();
+  const router = useRouter();
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredEntries = useMemo(() => {
+    if (!searchQuery.trim()) return entries;
+    const q = searchQuery.toLowerCase();
+    return entries.filter(e => e.name.toLowerCase().includes(q) || e.content.toLowerCase().includes(q));
+  }, [entries, searchQuery]);
+
+  const handleToggle = useCallback((id: string) => {
+    setExpandedId(prev => (prev === id ? null : id));
+  }, []);
+
+  const handleCopyAll = useCallback((entry: ClipEntry) => {
+    triggerCopy(entry.content);
+  }, [triggerCopy]);
+
+  const handleDelete = useCallback((entry: ClipEntry) => {
+    Alert.alert(t('entryList_deleteTitle'), t('entryList_deleteMessage', { name: entry.name }), [
+      { text: t('common_cancel'), style: 'cancel' },
+      { text: t('common_delete'), style: 'destructive', onPress: () => { deleteEntry(entry.id); if (expandedId === entry.id) setExpandedId(null); } },
+    ]);
+  }, [deleteEntry, expandedId, t]);
+
+  const handleEdit = useCallback((entry: ClipEntry) => {
+    router.push({ pathname: '/entry-edit', params: { entryId: entry.id } });
+  }, [router]);
+
+  const renderItem = useCallback(({ item, drag, isActive }: { item: ClipEntry; drag?: () => void; isActive?: boolean }) => (
+    <EntryCard entry={item} isExpanded={expandedId === item.id}
+      onToggle={() => handleToggle(item.id)} onEdit={() => handleEdit(item)} onDelete={() => handleDelete(item)}
+      onCopyWord={w => triggerCopy(w)} onCopyLine={l => triggerCopy(l)} onCopyJoined={j => triggerCopy(j)}
+      onCopyAll={() => handleCopyAll(item)} drag={drag} isActive={isActive} />
+  ), [expandedId, handleToggle, handleEdit, handleDelete, handleCopyAll, triggerCopy]);
+
+  const handleDragEnd = useCallback(({ data }: { data: ClipEntry[] }) => {
+    reorderEntries(data);
+  }, [reorderEntries]);
+
+  return (
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
+      <CopyFeedback visible={showFeedback} text={copiedText} />
+      {entries.length > 0 && (
+        <View style={[styles.searchContainer, { backgroundColor: theme.bg }]}>
+          <View style={[styles.searchBar, { backgroundColor: theme.bgSecondary, borderColor: theme.border }]}>
+            <Ionicons name="search" size={18} color={theme.textSecondary} />
+            <TextInput style={[styles.searchInput, { color: theme.text }]}
+              value={searchQuery} onChangeText={setSearchQuery}
+              placeholder={t('entryList_searchPlaceholder')} placeholderTextColor={theme.textSecondary}
+              autoCapitalize="none" clearButtonMode="while-editing"
+              accessibilityLabel={t('entryList_search')} />
+            {searchQuery.length > 0 && (
+              <Pressable onPress={() => setSearchQuery('')} style={styles.clearBtn}>
+                <Ionicons name="close-circle" size={18} color={theme.textSecondary} />
+              </Pressable>
+            )}
+          </View>
+        </View>
+      )}
+      {filteredEntries.length === 0 && entries.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Ionicons name="clipboard-outline" size={64} color={theme.textSecondary} />
+          <Text style={[styles.emptyText, { color: theme.textSecondary }]}>{t('entryList_empty')}</Text>
+          <Text style={[styles.emptySubtext, { color: theme.textSecondary }]}>{t('entryList_emptyHint')}</Text>
+        </View>
+      ) : filteredEntries.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Ionicons name="search-outline" size={48} color={theme.textSecondary} />
+          <Text style={[styles.emptySubtext, { color: theme.textSecondary }]}>{t('entryList_noResults')}</Text>
+        </View>
+      ) : (
+        <FlatList data={filteredEntries} keyExtractor={item => item.id} renderItem={renderItem}
+          contentContainerStyle={styles.listContent} key={numColumns}
+          numColumns={isTablet ? numColumns : 1} columnWrapperStyle={numColumns > 1 ? styles.columnWrapper : undefined} />
+      )}
+      <Pressable onPress={() => router.push('/entry-edit')} style={[styles.fab, { backgroundColor: theme.accent }]}
+        accessibilityLabel={t('entryList_addEntry')} accessibilityRole="button">
+        <Ionicons name="add" size={28} color="#fff" />
+      </Pressable>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+  searchContainer: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4 },
+  searchBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: StyleSheet.hairlineWidth, gap: 8 },
+  searchInput: { flex: 1, fontSize: 16, padding: 0 },
+  clearBtn: { padding: 2 },
+  listContent: { paddingVertical: 8 },
+  columnWrapper: { paddingHorizontal: 8 },
+  emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
+  emptyText: { fontSize: 18, fontWeight: '600' },
+  emptySubtext: { fontSize: 14 },
+  fab: { position: 'absolute', right: 20, bottom: 24, width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4, elevation: 5 },
+});
