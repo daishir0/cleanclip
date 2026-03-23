@@ -1,15 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, Pressable, Switch, StyleSheet, Alert, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Constants from 'expo-constants';
 import { useApp } from '@/contexts/AppContext';
 import { useT, type Locale } from '@/i18n';
-import { AutoExpireOption } from '@/types/clip';
 import { exportData, importData } from '@/services/export-service';
 import { isCloudSyncAvailable, isSyncEnabled, setSyncEnabled, performSync } from '@/services/sync-service';
 
 export default function SettingsScreen() {
-  const { settings, updateSettings, isDarkMode, toggleDarkMode, deleteAllEntries, theme } = useApp();
+  const { isDarkMode, toggleDarkMode, deleteAllEntries, theme } = useApp();
   const { t, locale, setLocale } = useT();
 
   const [syncOn, setSyncOn] = useState(false);
@@ -28,12 +26,6 @@ export default function SettingsScreen() {
     }
   };
 
-  const EXPIRE_OPTIONS: { labelKey: 'settings_expireManual' | 'settings_expire1h' | 'settings_expire1d'; value: AutoExpireOption }[] = [
-    { labelKey: 'settings_expireManual', value: 'manual' },
-    { labelKey: 'settings_expire1h', value: '1h' },
-    { labelKey: 'settings_expire1d', value: '1d' },
-  ];
-
   const handleDeleteAll = () => {
     Alert.alert(t('settings_deleteAllTitle'), t('settings_deleteAllMessage'), [
       { text: t('common_cancel'), style: 'cancel' },
@@ -44,43 +36,8 @@ export default function SettingsScreen() {
     ]);
   };
 
-  const toggleAutoClear = () => {
-    updateSettings({ ...settings, autoClearClipboard: !settings.autoClearClipboard, autoClearDelayMs: !settings.autoClearClipboard ? 30000 : 0 });
-  };
-
-  const setAutoExpire = (option: AutoExpireOption) => {
-    updateSettings({ ...settings, autoExpireTimer: option });
-  };
-
   return (
     <ScrollView style={[styles.container, { backgroundColor: theme.bg }]} contentContainerStyle={styles.content}>
-      {/* Clipboard */}
-      <Text style={[styles.sectionHeader, { color: theme.textSecondary }]}>{t('settings_clipboard')}</Text>
-      <View style={[styles.section, { backgroundColor: theme.bgSecondary, borderColor: theme.border }]}>
-        <View style={styles.row}>
-          <View style={styles.rowLabel}>
-            <Text style={[styles.rowTitle, { color: theme.text }]}>{t('settings_autoClear')}</Text>
-            <Text style={[styles.rowSubtitle, { color: theme.textSecondary }]}>{t('settings_autoClearDesc')}</Text>
-          </View>
-          <Switch value={settings.autoClearClipboard} onValueChange={toggleAutoClear}
-            trackColor={{ false: theme.border, true: theme.accent }} accessibilityLabel={t('settings_autoClearLabel')} />
-        </View>
-      </View>
-
-      {/* Auto Expire */}
-      <Text style={[styles.sectionHeader, { color: theme.textSecondary }]}>{t('settings_autoExpire')}</Text>
-      <View style={[styles.section, { backgroundColor: theme.bgSecondary, borderColor: theme.border }]}>
-        {EXPIRE_OPTIONS.map((option, idx) => (
-          <Pressable key={option.value} onPress={() => setAutoExpire(option.value)}
-            style={[styles.row, idx < EXPIRE_OPTIONS.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.border }]}
-            accessibilityLabel={t('settings_autoExpireLabel', { label: t(option.labelKey) })}
-            accessibilityRole="radio" accessibilityState={{ selected: settings.autoExpireTimer === option.value }}>
-            <Text style={[styles.rowTitle, { color: theme.text }]}>{t(option.labelKey)}</Text>
-            {settings.autoExpireTimer === option.value && <Ionicons name="checkmark" size={20} color={theme.accent} />}
-          </Pressable>
-        ))}
-      </View>
-
       {/* Appearance */}
       <Text style={[styles.sectionHeader, { color: theme.textSecondary }]}>{t('settings_appearance')}</Text>
       <View style={[styles.section, { backgroundColor: theme.bgSecondary, borderColor: theme.border }]}>
@@ -172,9 +129,6 @@ export default function SettingsScreen() {
         </Pressable>
       </View>
 
-      <Text style={[styles.version, { color: theme.textSecondary }]}>
-        CleanClip v{Constants.expoConfig?.version ?? '1.0.0'}
-      </Text>
     </ScrollView>
   );
 }
@@ -189,5 +143,4 @@ const styles = StyleSheet.create({
   rowSubtitle: { fontSize: 12, marginTop: 2 },
   infoRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, paddingHorizontal: 16, paddingVertical: 12 },
   infoText: { flex: 1, fontSize: 13, lineHeight: 18 },
-  version: { textAlign: 'center', fontSize: 12, marginTop: 24 },
 });

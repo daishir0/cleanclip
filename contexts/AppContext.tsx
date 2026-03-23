@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { useColorScheme } from 'react-native';
-import { ClipEntry, AppSettings, DEFAULT_SETTINGS, AutoExpireOption } from '@/types/clip';
+import { ClipEntry, AppSettings, DEFAULT_SETTINGS } from '@/types/clip';
 import { Theme, getTheme } from '@/constants/theme';
 import {
   loadEntries, saveEntries,
@@ -39,15 +39,6 @@ function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).substring(2, 8);
 }
 
-function getExpireTimestamp(option: AutoExpireOption): number | undefined {
-  const now = Date.now();
-  switch (option) {
-    case '1h': return now + 60 * 60 * 1000;
-    case '1d': return now + 24 * 60 * 60 * 1000;
-    default: return undefined;
-  }
-}
-
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const systemColorScheme = useColorScheme();
   const [entries, setEntries] = useState<ClipEntry[]>([]);
@@ -58,8 +49,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const entriesRef = useRef(entries);
   entriesRef.current = entries;
-  const settingsRef = useRef(settings);
-  settingsRef.current = settings;
 
   // Load persisted data on mount
   useEffect(() => {
@@ -76,29 +65,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     })();
   }, []);
 
-  // Auto-expire cleanup
-  useEffect(() => {
-    if (!loaded) return;
-    const interval = setInterval(() => {
-      const now = Date.now();
-      const current = entriesRef.current;
-      const expired = current.filter(e => e.autoExpireAt && e.autoExpireAt <= now);
-      if (expired.length > 0) {
-        const next = current.filter(e => !e.autoExpireAt || e.autoExpireAt > now);
-        entriesRef.current = next;
-        setEntries(next);
-        saveEntries(next);
-      }
-    }, 60_000); // check every minute
-    return () => clearInterval(interval);
-  }, [loaded]);
-
   const theme = getTheme(isDarkMode);
 
   const addEntry = useCallback(async (entry: ClipEntry) => {
-    const expireAt = getExpireTimestamp(settingsRef.current.autoExpireTimer);
-    const newEntry = { ...entry, autoExpireAt: expireAt };
-    const next = [newEntry, ...entriesRef.current];
+    const next = [entry, ...entriesRef.current];
     entriesRef.current = next;
     setEntries(next);
     await saveEntries(next);

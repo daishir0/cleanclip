@@ -46,27 +46,23 @@ export function FieldRow({ line, masked, onCopyWord, onCopyLine, onCopyJoined }:
           </Pressable>
         )}
       </View>
-      <View style={styles.actionsRow}>
-        <Pressable onPress={() => onCopyLine(line)}
-          style={[styles.actionBtn, { backgroundColor: theme.bgTertiary }]}
-          accessibilityLabel={t('fieldRow_copyLine')} accessibilityRole="button">
-          <Text style={[styles.actionText, { color: theme.accent }]}>{t('fieldRow_line')}</Text>
-        </Pressable>
-        <Pressable onPress={() => onCopyJoined(line.replace(/\s+/g, ''))}
-          style={[styles.actionBtn, { backgroundColor: theme.bgTertiary }]}
-          accessibilityLabel={t('fieldRow_copyJoined')} accessibilityRole="button">
-          <Text style={[styles.actionText, { color: theme.accent }]}>{t('fieldRow_joined')}</Text>
-        </Pressable>
-      </View>
+      <Pressable
+        onPress={() => onCopyLine(line)}
+        onLongPress={() => onCopyJoined(line.replace(/\s+/g, ''))}
+        style={[styles.copyBtn, { backgroundColor: theme.bgTertiary }]}
+        accessibilityLabel={t('fieldRow_copyLine')}
+        accessibilityHint={t('fieldRow_copyLongPressHint')}
+        accessibilityRole="button">
+        <Text style={[styles.copyBtnText, { color: theme.accent }]}>{t('fieldRow_copy')}</Text>
+      </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { paddingVertical: 8, borderBottomWidth: StyleSheet.hairlineWidth },
-  wordsContainer: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center' },
+  container: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderBottomWidth: StyleSheet.hairlineWidth },
+  wordsContainer: { flex: 1, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center' },
   revealButton: { padding: 6, marginBottom: 6 },
-  actionsRow: { flexDirection: 'row', marginTop: 4, gap: 8 },
-  actionBtn: { paddingHorizontal: 14, paddingVertical: 5, borderRadius: 6 },
-  actionText: { fontSize: 13, fontWeight: '600' },
+  copyBtn: { paddingHorizontal: 14, paddingVertical: 5, borderRadius: 6, marginLeft: 8 },
+  copyBtnText: { fontSize: 13, fontWeight: '600' },
 });

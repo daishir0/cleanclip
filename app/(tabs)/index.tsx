@@ -1,7 +1,8 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { View, FlatList, Text, TextInput, Pressable, StyleSheet, Alert } from 'react-native';
+import { View, FlatList, Text, TextInput, Pressable, StyleSheet, Alert, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import DraggableFlatList, { RenderItemParams } from 'react-native-draggable-flatlist';
 import { useApp } from '@/contexts/AppContext';
 import { useCopyFeedback } from '@/hooks/use-copy-feedback';
 import { useResponsive } from '@/hooks/use-responsive';
@@ -34,22 +35,56 @@ export default function EntryListScreen() {
   }, [triggerCopy]);
 
   const handleDelete = useCallback((entry: ClipEntry) => {
-    Alert.alert(t('entryList_deleteTitle'), t('entryList_deleteMessage', { name: entry.name }), [
-      { text: t('common_cancel'), style: 'cancel' },
-      { text: t('common_delete'), style: 'destructive', onPress: () => { deleteEntry(entry.id); if (expandedId === entry.id) setExpandedId(null); } },
-    ]);
+    if (Platform.OS === 'web') {
+      if (window.confirm(t('entryList_deleteMessage', { name: entry.name }))) {
+        deleteEntry(entry.id);
+        if (expandedId === entry.id) setExpandedId(null);
+      }
+    } else {
+      Alert.alert(t('entryList_deleteTitle'), t('entryList_deleteMessage', { name: entry.name }), [
+        { text: t('common_cancel'), style: 'cancel' },
+        { text: t('common_delete'), style: 'destructive', onPress: () => { deleteEntry(entry.id); if (expandedId === entry.id) setExpandedId(null); } },
+      ]);
+    }
   }, [deleteEntry, expandedId, t]);
 
   const handleEdit = useCallback((entry: ClipEntry) => {
     router.push({ pathname: '/entry-edit', params: { entryId: entry.id } });
   }, [router]);
 
-  const renderItem = useCallback(({ item, drag, isActive }: { item: ClipEntry; drag?: () => void; isActive?: boolean }) => (
+  const handleMoveUp = useCallback((id: string) => {
+    const idx = entries.findIndex(e => e.id === id);
+    if (idx <= 0) return;
+    const next = [...entries];
+    [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
+    reorderEntries(next);
+  }, [entries, reorderEntries]);
+
+  const handleMoveDown = useCallback((id: string) => {
+    const idx = entries.findIndex(e => e.id === id);
+    if (idx < 0 || idx >= entries.length - 1) return;
+    const next = [...entries];
+    [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
+    reorderEntries(next);
+  }, [entries, reorderEntries]);
+
+  const renderItem = useCallback(({ item, drag, isActive }: RenderItemParams<ClipEntry>) => (
     <EntryCard entry={item} isExpanded={expandedId === item.id}
       onToggle={() => handleToggle(item.id)} onEdit={() => handleEdit(item)} onDelete={() => handleDelete(item)}
       onCopyWord={w => triggerCopy(w)} onCopyLine={l => triggerCopy(l)} onCopyJoined={j => triggerCopy(j)}
-      onCopyAll={() => handleCopyAll(item)} drag={drag} isActive={isActive} />
-  ), [expandedId, handleToggle, handleEdit, handleDelete, handleCopyAll, triggerCopy]);
+      onCopyAll={() => handleCopyAll(item)} drag={drag} isActive={isActive}
+      onMoveUp={() => handleMoveUp(item.id)} onMoveDown={() => handleMoveDown(item.id)}
+      isFirst={entries.indexOf(item) === 0} isLast={entries.indexOf(item) === entries.length - 1} />
+  ), [expandedId, handleToggle, handleEdit, handleDelete, handleCopyAll, triggerCopy, handleMoveUp, handleMoveDown, entries]);
+
+  const renderFlatItem = useCallback(({ item }: { item: ClipEntry }) => (
+    <EntryCard entry={item} isExpanded={expandedId === item.id}
+      onToggle={() => handleToggle(item.id)} onEdit={() => handleEdit(item)} onDelete={() => handleDelete(item)}
+      onCopyWord={w => triggerCopy(w)} onCopyLine={l => triggerCopy(l)} onCopyJoined={j => triggerCopy(j)}
+      onCopyAll={() => handleCopyAll(item)}
+      onMoveUp={() => handleMoveUp(item.id)} onMoveDown={() => handleMoveDown(item.id)}
+      isFirst={entries.indexOf(item) === 0} isLast={entries.indexOf(item) === entries.length - 1} />
+  ), [expandedId, handleToggle, handleEdit, handleDelete, handleCopyAll, triggerCopy, handleMoveUp, handleMoveDown, entries]);
 
   const handleDragEnd = useCallback(({ data }: { data: ClipEntry[] }) => {
     reorderEntries(data);
@@ -86,10 +121,13 @@ export default function EntryListScreen() {
           <Ionicons name="search-outline" size={48} color={theme.textSecondary} />
           <Text style={[styles.emptySubtext, { color: theme.textSecondary }]}>{t('entryList_noResults')}</Text>
         </View>
-      ) : (
-        <FlatList data={filteredEntries} keyExtractor={item => item.id} renderItem={renderItem}
+      ) : searchQuery.trim() || (isTablet && numColumns > 1) ? (
+        <FlatList data={filteredEntries} keyExtractor={item => item.id} renderItem={renderFlatItem}
           contentContainerStyle={styles.listContent} key={numColumns}
           numColumns={isTablet ? numColumns : 1} columnWrapperStyle={numColumns > 1 ? styles.columnWrapper : undefined} />
+      ) : (
+        <DraggableFlatList data={filteredEntries} keyExtractor={item => item.id} renderItem={renderItem}
+          onDragEnd={handleDragEnd} contentContainerStyle={styles.listContent} />
       )}
       <Pressable onPress={() => router.push('/entry-edit')} style={[styles.fab, { backgroundColor: theme.accent }]}
         accessibilityLabel={t('entryList_addEntry')} accessibilityRole="button">

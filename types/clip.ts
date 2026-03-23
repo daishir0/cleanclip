@@ -5,19 +5,8 @@ export type ClipEntry = {
   masked: boolean;       // mask toggle for entire entry
   createdAt: number;
   updatedAt: number;
-  autoExpireAt?: number; // undefined = manual only
 };
 
-export type AutoExpireOption = 'manual' | '1h' | '1d';
+export type AppSettings = Record<string, never>;
 
-export type AppSettings = {
-  autoClearClipboard: boolean;
-  autoClearDelayMs: number; // 0 = disabled
-  autoExpireTimer: AutoExpireOption;
-};
-
-export const DEFAULT_SETTINGS: AppSettings = {
-  autoClearClipboard: false,
-  autoClearDelayMs: 0,
-  autoExpireTimer: 'manual',
-};
+export const DEFAULT_SETTINGS: AppSettings = {};

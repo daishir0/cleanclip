@@ -24,7 +24,7 @@ export async function loadEntries(): Promise<ClipEntry[]> {
         const sortedFields = [...entry.fields].sort((a: any, b: any) => a.order - b.order);
         const content = sortedFields.map((f: any) => f.value).join('\n');
         const masked = sortedFields.some((f: any) => f.masked);
-        return { id: entry.id, name: entry.name || '', content, masked, createdAt: entry.createdAt, updatedAt: entry.updatedAt, autoExpireAt: entry.autoExpireAt };
+        return { id: entry.id, name: entry.name || '', content, masked, createdAt: entry.createdAt, updatedAt: entry.updatedAt };
       }
       if (!('name' in entry)) {
         // v2 → v3: content only (no name) → name + content

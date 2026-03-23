@@ -56,15 +56,6 @@ export const ja = {
   entryEdit_errorNoContent: '内容を入力してください',
 
   // Settings
-  settings_clipboard: 'クリップボード',
-  settings_autoClear: 'ペースト後に自動クリア',
-  settings_autoClearDesc: 'コピー後30秒でクリップボードを消去',
-  settings_autoClearLabel: 'クリップボード自動クリア',
-  settings_autoExpire: '自動消去タイマー',
-  settings_autoExpireLabel: '自動消去: {{label}}',
-  settings_expireManual: '手動のみ',
-  settings_expire1h: '1時間',
-  settings_expire1d: '1日',
   settings_appearance: '外観',
   settings_darkMode: 'ダークモード',
   settings_darkModeLabel: 'ダークモード切替',
@@ -120,6 +111,8 @@ export const ja = {
   fieldRow_copyJoined: '結合コピー（スペースなし）',
   fieldRow_line: '行',
   fieldRow_joined: '結合',
+  fieldRow_copy: 'コピー',
+  fieldRow_copyLongPressHint: '長押しでスペースなしコピー',
 
   // Word Chip
   wordChip_copyMasked: 'マスクされた値をコピー',

@@ -2,14 +2,14 @@ import { Tabs, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable } from 'react-native';
 import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useApp } from '@/contexts/AppContext';
 import { useT } from '@/i18n';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  const { isDarkMode } = useApp();
   const router = useRouter();
   const { t } = useT();
-  const tint = Colors[colorScheme === 'dark' ? 'dark' : 'light'].tint;
+  const tint = Colors[isDarkMode ? 'dark' : 'light'].tint;
 
   return (
     <Tabs

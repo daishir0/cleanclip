@@ -8,7 +8,7 @@ import { cleanText } from '@/services/clean-service';
 import { CleanPreview } from '@/components/CleanPreview';
 
 export default function CleanScreen() {
-  const { theme, settings } = useApp();
+  const { theme } = useApp();
   const { t } = useT();
   const [beforeText, setBeforeText] = useState<string | null>(null);
   const [afterText, setAfterText] = useState<string | null>(null);
@@ -22,8 +22,7 @@ export default function CleanScreen() {
 
   const handleApply = async () => {
     if (!afterText) return;
-    const clearMs = settings.autoClearClipboard ? (settings.autoClearDelayMs || 30000) : undefined;
-    await copyToClipboard(afterText, clearMs);
+    await copyToClipboard(afterText);
     setApplied(true);
   };
 
