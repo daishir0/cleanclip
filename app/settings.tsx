@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, Pressable, Switch, StyleSheet, Alert, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useApp } from '@/contexts/AppContext';
 import { useT, type Locale } from '@/i18n';
 import { exportData, importData } from '@/services/export-service';
@@ -9,6 +10,7 @@ import { isCloudSyncAvailable, isSyncEnabled, setSyncEnabled, performSync } from
 export default function SettingsScreen() {
   const { isDarkMode, toggleDarkMode, deleteAllEntries, theme } = useApp();
   const { t, locale, setLocale } = useT();
+  const router = useRouter();
 
   const [syncOn, setSyncOn] = useState(false);
   const cloudAvailable = isCloudSyncAvailable();
@@ -37,6 +39,16 @@ export default function SettingsScreen() {
   };
 
   return (
+    <View style={{ flex: 1, backgroundColor: theme.bg }}>
+      {/* Header */}
+      <View style={[styles.header, { borderBottomColor: theme.border }]}>
+        <Pressable onPress={() => router.back()} hitSlop={12} style={styles.headerButton}>
+          <Ionicons name="close" size={24} color={theme.text} />
+        </Pressable>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>{t('modal_settings')}</Text>
+        <View style={styles.headerButton} />
+      </View>
+
     <ScrollView style={[styles.container, { backgroundColor: theme.bg }]} contentContainerStyle={styles.content}>
       {/* Appearance */}
       <Text style={[styles.sectionHeader, { color: theme.textSecondary }]}>{t('settings_appearance')}</Text>
@@ -130,10 +142,27 @@ export default function SettingsScreen() {
       </View>
 
     </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  headerButton: {
+    minWidth: 44,
+  },
+  headerTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+  },
   container: { flex: 1 }, content: { paddingBottom: 40 },
   sectionHeader: { fontSize: 13, fontWeight: '600', textTransform: 'uppercase', marginTop: 24, marginBottom: 8, marginHorizontal: 16 },
   section: { marginHorizontal: 16, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
