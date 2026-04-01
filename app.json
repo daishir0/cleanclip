@@ -3,7 +3,7 @@
     "name": "CleanClip",
     "slug": "cleanclip",
     "scheme": "cleanclip",
-    "version": "1.4.0",
+    "version": "1.5.0",
     "orientation": "default",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": false,
@@ -16,7 +16,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "jp.path-finder.cleanclip",
-      "buildNumber": "5",
+      "buildNumber": "1",
       "infoPlist": {
         "NSFaceIDUsageDescription": "エントリデータへのアクセスにFace IDを使用します",
         "ITSAppUsesNonExemptEncryption": false
