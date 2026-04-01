@@ -16,7 +16,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "jp.path-finder.cleanclip",
-      "buildNumber": "4",
+      "buildNumber": "5",
       "infoPlist": {
         "NSFaceIDUsageDescription": "エントリデータへのアクセスにFace IDを使用します",
         "ITSAppUsesNonExemptEncryption": false
