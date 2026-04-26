@@ -57,8 +57,11 @@ export default function TabLayout() {
       screenOptions={{
         tabBarActiveTintColor: tint,
         headerRight: () => (
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 16 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 16, gap: 12 }}>
             <SyncIndicator tint={tint} />
+            <Pressable onPress={() => router.push('/file-view' as any)} accessibilityRole="button" accessibilityLabel={t('file_open')}>
+              <Ionicons name="folder-open-outline" size={22} color={tint} />
+            </Pressable>
             <Pressable onPress={() => router.push('/settings')} accessibilityRole="button" accessibilityLabel={t('modal_settings')}>
               <Ionicons name="settings-outline" size={24} color={tint} />
             </Pressable>

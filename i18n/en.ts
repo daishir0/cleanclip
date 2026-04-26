@@ -147,4 +147,19 @@ export const en = {
 
   copyFeedback_withText: 'Copied "{{text}}"',
   copyFeedback_generic: 'Copied',
+
+  file_title: 'Files',
+  file_filename: 'Filename',
+  file_filenamePlaceholder: 'e.g. id_rsa, config.json, notes.txt',
+  file_filenameRequired: 'Please enter a filename',
+  file_content: 'Content',
+  file_contentPlaceholder: 'File contents\nPaste from another app, or load via "Open file"',
+  file_open: 'Open file',
+  file_save: 'Save to file',
+  file_saveAsEntry: 'Save as entry',
+  file_loadError: 'Failed to read the file',
+  file_saveError: 'Failed to save',
+  file_savedToast: 'Choose a destination',
+  file_savedAsEntryToast: 'Saved as entry',
+  file_untitledEntry: 'untitled',
 } as const satisfies Translations;

@@ -21,6 +21,7 @@ function NavigationContent() {
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="entry-edit" options={{ presentation: 'modal', headerShown: false }} />
           <Stack.Screen name="settings" options={{ presentation: 'modal', headerShown: false }} />
+          <Stack.Screen name="file-view" options={{ presentation: 'modal', headerShown: false }} />
         </Stack>
         <PrivacyOverlay />
       </AuthGate>

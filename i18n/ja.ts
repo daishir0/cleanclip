@@ -162,6 +162,22 @@ export const ja = {
   // Copy Feedback
   copyFeedback_withText: '"{{text}}" をコピー',
   copyFeedback_generic: 'コピーしました',
+
+  // File view
+  file_title: 'ファイル',
+  file_filename: 'ファイル名',
+  file_filenamePlaceholder: '例: id_rsa, config.json, notes.txt',
+  file_filenameRequired: 'ファイル名を入力してください',
+  file_content: '内容',
+  file_contentPlaceholder: 'ファイルの内容\n他のアプリから貼り付け、または「ファイルを開く」から読み込み',
+  file_open: 'ファイルを開く',
+  file_save: 'ファイルに保存',
+  file_saveAsEntry: 'エントリとして保存',
+  file_loadError: 'ファイルの読み込みに失敗しました',
+  file_saveError: '保存に失敗しました',
+  file_savedToast: '保存先を選択してください',
+  file_savedAsEntryToast: 'エントリとして保存しました',
+  file_untitledEntry: 'untitled',
 } as const;
 
 export type TranslationKeys = keyof typeof ja;

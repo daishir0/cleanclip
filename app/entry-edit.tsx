@@ -4,6 +4,8 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '@/contexts/AppContext';
 import { useT } from '@/i18n';
+import { useToast } from '@/components/Toast';
+import { saveTextToFile } from '@/services/file-service';
 
 function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).substring(2, 8);
@@ -14,6 +16,7 @@ export default function EntryEditScreen() {
   const { entryId } = useLocalSearchParams<{ entryId?: string }>();
   const { entries, addEntry, updateEntry, deleteEntry, theme, syncAvailable } = useApp();
   const { t } = useT();
+  const { showToast } = useToast();
 
   const existingEntry = useMemo(() => entries.find(e => e.id === entryId), [entries, entryId]);
   const [name, setName] = useState(existingEntry?.name ?? '');
@@ -54,6 +57,17 @@ export default function EntryEditScreen() {
       { text: t('common_cancel'), style: 'cancel' },
       { text: t('common_delete'), style: 'destructive', onPress: async () => { await deleteEntry(existingEntry.id); router.back(); } },
     ]);
+  };
+
+  const handleSaveToFile = async () => {
+    if (!content.trim()) { Alert.alert(t('common_error'), t('entryEdit_errorNoContent')); return; }
+    const suggested = name.trim() || t('file_untitledEntry');
+    try {
+      await saveTextToFile(content, suggested);
+      showToast(t('file_savedToast'), 'success');
+    } catch {
+      showToast(t('file_saveError'), 'error');
+    }
   };
 
   return (
@@ -112,6 +126,12 @@ export default function EntryEditScreen() {
           </View>
         )}
 
+        <Pressable onPress={handleSaveToFile} style={[styles.fileBtn, { borderColor: theme.border }]}
+          accessibilityLabel={t('file_save')} accessibilityRole="button">
+          <Ionicons name="save-outline" size={16} color={theme.accent} />
+          <Text style={[styles.fileBtnText, { color: theme.accent }]}>{t('file_save')}</Text>
+        </Pressable>
+
         {isEditing && (
           <Pressable onPress={handleDelete} style={[styles.deleteBtn, { borderColor: theme.danger }]}
             accessibilityLabel={t('entryEdit_deleteEntryLabel')} accessibilityRole="button">
@@ -144,6 +164,8 @@ const styles = StyleSheet.create({
   localOnlyTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   localOnlyTitle: { fontSize: 15, fontWeight: '600' },
   localOnlyDesc: { fontSize: 12, marginTop: 4, lineHeight: 16 },
-  deleteBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, padding: 14, borderRadius: 10, borderWidth: 1, marginTop: 32 },
+  fileBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, padding: 12, borderRadius: 10, borderWidth: StyleSheet.hairlineWidth, marginTop: 24 },
+  fileBtnText: { fontSize: 14, fontWeight: '500' },
+  deleteBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, padding: 14, borderRadius: 10, borderWidth: 1, marginTop: 16 },
   deleteBtnText: { fontSize: 15, fontWeight: '500' },
 });
