@@ -7,6 +7,7 @@ export type ClipEntry = {
   updatedAt: number;
   deletedAt?: number;
   localOnly?: boolean;
+  sortKey?: number;
 };
 
 export type AppSettings = Record<string, never>;
@@ -19,4 +20,8 @@ export function isTombstone(e: ClipEntry): boolean {
 
 export function isLocalOnly(e: ClipEntry): boolean {
   return e.localOnly === true;
+}
+
+export function getSortKey(e: ClipEntry): number {
+  return typeof e.sortKey === 'number' ? e.sortKey : e.createdAt;
 }

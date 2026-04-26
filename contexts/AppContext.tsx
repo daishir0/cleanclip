@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useColorScheme, AppState, AppStateStatus } from 'react-native';
-import { ClipEntry, AppSettings, DEFAULT_SETTINGS, isTombstone } from '@/types/clip';
+import { ClipEntry, AppSettings, DEFAULT_SETTINGS, isTombstone, getSortKey } from '@/types/clip';
 import { Theme, getTheme } from '@/constants/theme';
 import {
   loadEntries, saveEntries,
@@ -36,7 +36,7 @@ interface AppContextType {
   addEntry: (entry: ClipEntry) => Promise<void>;
   updateEntry: (id: string, updates: Partial<ClipEntry>) => Promise<void>;
   deleteEntry: (id: string) => Promise<void>;
-  reorderEntries: (reordered: ClipEntry[]) => Promise<void>;
+  reorderEntry: (id: string, above: ClipEntry | null, below: ClipEntry | null) => Promise<void>;
   setEntryLocalOnly: (id: string, value: boolean) => Promise<void>;
   updateSettings: (settings: AppSettings) => Promise<void>;
   toggleDarkMode: () => void;
@@ -55,6 +55,17 @@ export function useApp() {
 }
 
 const AUTOSYNC_MIN_INTERVAL_MS = 30_000;
+const SORT_KEY_STEP = 1024;
+
+function topSortKey(visible: ClipEntry[]): number {
+  if (visible.length === 0) return Date.now();
+  let max = -Infinity;
+  for (const e of visible) {
+    const k = getSortKey(e);
+    if (k > max) max = k;
+  }
+  return max + SORT_KEY_STEP;
+}
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const systemColorScheme = useColorScheme();
@@ -75,7 +86,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const syncEnabledRef = useRef(false);
   syncEnabledRef.current = syncEnabled;
 
-  const visibleEntries = useMemo(() => allEntries.filter(e => !isTombstone(e)), [allEntries]);
+  const visibleEntries = useMemo(() => {
+    return allEntries
+      .filter(e => !isTombstone(e))
+      .sort((a, b) => getSortKey(b) - getSortKey(a));
+  }, [allEntries]);
 
   useEffect(() => {
     (async () => {
@@ -169,7 +184,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const addEntry = useCallback(async (entry: ClipEntry) => {
-    const next = [entry, ...entriesRef.current];
+    const visible = entriesRef.current.filter(e => !isTombstone(e));
+    const sortKey = typeof entry.sortKey === 'number' ? entry.sortKey : topSortKey(visible);
+    const withKey: ClipEntry = { ...entry, sortKey };
+    const next = [withKey, ...entriesRef.current];
     await persistAll(next);
     if (syncEnabledRef.current) triggerSync({ silent: true }).catch(() => {});
   }, [persistAll, triggerSync]);
@@ -202,11 +220,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (syncEnabledRef.current) triggerSync({ silent: true }).catch(() => {});
   }, [persistAll, triggerSync]);
 
-  const reorderEntries = useCallback(async (reordered: ClipEntry[]) => {
-    const tombstones = entriesRef.current.filter(isTombstone);
-    const next = [...reordered, ...tombstones];
+  const reorderEntry = useCallback(async (id: string, above: ClipEntry | null, below: ClipEntry | null) => {
+    const aboveKey = above ? getSortKey(above) : null;
+    const belowKey = below ? getSortKey(below) : null;
+    let newKey: number;
+    if (aboveKey === null && belowKey === null) {
+      newKey = Date.now();
+    } else if (aboveKey === null && belowKey !== null) {
+      newKey = belowKey + SORT_KEY_STEP;
+    } else if (aboveKey !== null && belowKey === null) {
+      newKey = aboveKey - SORT_KEY_STEP;
+    } else {
+      newKey = ((aboveKey as number) + (belowKey as number)) / 2;
+    }
+    const now = Date.now();
+    const next = entriesRef.current.map(e =>
+      e.id === id ? { ...e, sortKey: newKey, updatedAt: now } : e
+    );
     await persistAll(next);
-  }, [persistAll]);
+    if (syncEnabledRef.current) triggerSync({ silent: true }).catch(() => {});
+  }, [persistAll, triggerSync]);
 
   const setEntryLocalOnly = useCallback(async (id: string, value: boolean) => {
     const now = Date.now();
@@ -271,7 +304,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         addEntry,
         updateEntry,
         deleteEntry,
-        reorderEntries,
+        reorderEntry,
         setEntryLocalOnly,
         updateSettings: updateSettingsHandler,
         toggleDarkMode,

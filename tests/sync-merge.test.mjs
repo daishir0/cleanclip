@@ -25,6 +25,29 @@ function isLocalOnly(e) {
   return e.localOnly === true;
 }
 
+function getSortKey(e) {
+  return typeof e.sortKey === 'number' ? e.sortKey : e.createdAt;
+}
+
+const SORT_KEY_STEP = 1024;
+
+function reorderEntry(entries, id, above, below) {
+  const aboveKey = above ? getSortKey(above) : null;
+  const belowKey = below ? getSortKey(below) : null;
+  let newKey;
+  if (aboveKey === null && belowKey === null) {
+    newKey = Date.now();
+  } else if (aboveKey === null && belowKey !== null) {
+    newKey = belowKey + SORT_KEY_STEP;
+  } else if (aboveKey !== null && belowKey === null) {
+    newKey = aboveKey - SORT_KEY_STEP;
+  } else {
+    newKey = (aboveKey + belowKey) / 2;
+  }
+  const now = Date.now();
+  return entries.map(e => e.id === id ? { ...e, sortKey: newKey, updatedAt: now } : e);
+}
+
 function mergeEntries(local, cloud) {
   const byId = new Map();
   for (const e of local) byId.set(e.id, e);
@@ -42,7 +65,7 @@ function mergeEntries(local, cloud) {
     if (localOnly) merged.localOnly = true;
     byId.set(cloudEntry.id, merged);
   }
-  return Array.from(byId.values()).sort((a, b) => b.updatedAt - a.updatedAt);
+  return Array.from(byId.values()).sort((a, b) => getSortKey(b) - getSortKey(a));
 }
 
 function entriesForCloud(all) {
@@ -110,14 +133,90 @@ console.log('--- mergeEntries: tombstone (local delete, cloud update) ---');
   assert('tombstone preserved despite cloud update', isTombstone(r[0]));
 }
 
-console.log('--- mergeEntries: ordering by updatedAt desc ---');
+console.log('--- mergeEntries: ordering by sortKey desc (createdAt fallback) ---');
 {
   const local = [
     { id: 'h1', name: 'A', content: 'x', masked: false, createdAt: 1, updatedAt: 100 },
-    { id: 'h2', name: 'B', content: 'y', masked: false, createdAt: 1, updatedAt: 200 },
+    { id: 'h2', name: 'B', content: 'y', masked: false, createdAt: 2, updatedAt: 50 },
   ];
   const r = mergeEntries(local, []);
-  assert('sorted desc', r[0].id === 'h2' && r[1].id === 'h1');
+  assert('newer createdAt wins fallback when no sortKey', r[0].id === 'h2' && r[1].id === 'h1');
+}
+
+console.log('--- mergeEntries: explicit sortKey overrides createdAt ---');
+{
+  const local = [
+    { id: 's1', name: 'A', content: 'x', masked: false, createdAt: 1000, updatedAt: 100, sortKey: 5 },
+    { id: 's2', name: 'B', content: 'y', masked: false, createdAt: 999,  updatedAt: 100, sortKey: 50 },
+  ];
+  const r = mergeEntries(local, []);
+  assert('higher sortKey appears first', r[0].id === 's2' && r[1].id === 's1');
+}
+
+console.log('--- mergeEntries: order is stable across syncs (no auto-shift) ---');
+{
+  // User-defined order: A, B, C (sortKey 30, 20, 10)
+  // After a normal sync without changes, order must be identical.
+  const local = [
+    { id: 'A', name: 'A', content: 'x', masked: false, createdAt: 1, updatedAt: 100, sortKey: 30 },
+    { id: 'B', name: 'B', content: 'y', masked: false, createdAt: 1, updatedAt: 200, sortKey: 20 },
+    { id: 'C', name: 'C', content: 'z', masked: false, createdAt: 1, updatedAt: 300, sortKey: 10 },
+  ];
+  const cloud = local.map(e => ({ ...e })); // identical
+  const r = mergeEntries(local, cloud);
+  assert('stable order: A first', r[0].id === 'A');
+  assert('stable order: B middle', r[1].id === 'B');
+  assert('stable order: C last', r[2].id === 'C');
+}
+
+console.log('--- reorderEntry: fractional midpoint ---');
+{
+  const entries = [
+    { id: 'X', sortKey: 2000, updatedAt: 1, createdAt: 1, name: '', content: '', masked: false },
+    { id: 'Y', sortKey: 1000, updatedAt: 1, createdAt: 1, name: '', content: '', masked: false },
+  ];
+  const moved = { id: 'M', sortKey: 0, updatedAt: 1, createdAt: 1, name: '', content: '', masked: false };
+  const all = [entries[0], moved, entries[1]];
+  const next = reorderEntry(all, 'M', entries[0], entries[1]);
+  const m = next.find(e => e.id === 'M');
+  assert('midpoint between 2000 and 1000 is 1500', m.sortKey === 1500);
+}
+
+console.log('--- reorderEntry: top edge ---');
+{
+  const top = { id: 'T', sortKey: 1000, updatedAt: 1, createdAt: 1, name: '', content: '', masked: false };
+  const moved = { id: 'M', sortKey: 0, updatedAt: 1, createdAt: 1, name: '', content: '', masked: false };
+  const all = [moved, top];
+  const next = reorderEntry(all, 'M', null, top);
+  const m = next.find(e => e.id === 'M');
+  assert('top sortKey = below + STEP', m.sortKey === 1000 + SORT_KEY_STEP);
+}
+
+console.log('--- reorderEntry: bottom edge ---');
+{
+  const bottom = { id: 'B', sortKey: 1000, updatedAt: 1, createdAt: 1, name: '', content: '', masked: false };
+  const moved = { id: 'M', sortKey: 5000, updatedAt: 1, createdAt: 1, name: '', content: '', masked: false };
+  const all = [bottom, moved];
+  const next = reorderEntry(all, 'M', bottom, null);
+  const m = next.find(e => e.id === 'M');
+  assert('bottom sortKey = above - STEP', m.sortKey === 1000 - SORT_KEY_STEP);
+}
+
+console.log('--- reorderEntry: only the moved entry changes ---');
+{
+  const A = { id: 'A', sortKey: 3000, updatedAt: 100, createdAt: 1, name: '', content: '', masked: false };
+  const B = { id: 'B', sortKey: 2000, updatedAt: 200, createdAt: 1, name: '', content: '', masked: false };
+  const C = { id: 'C', sortKey: 1000, updatedAt: 300, createdAt: 1, name: '', content: '', masked: false };
+  const next = reorderEntry([A, B, C], 'C', A, B);
+  const a = next.find(e => e.id === 'A');
+  const b = next.find(e => e.id === 'B');
+  const c = next.find(e => e.id === 'C');
+  assert('A unchanged sortKey', a.sortKey === 3000);
+  assert('A unchanged updatedAt', a.updatedAt === 100);
+  assert('B unchanged sortKey', b.sortKey === 2000);
+  assert('B unchanged updatedAt', b.updatedAt === 200);
+  assert('C sortKey midpoint of A/B', c.sortKey === 2500);
+  assert('C updatedAt bumped', c.updatedAt > 300);
 }
 
 console.log('--- entriesForCloud: localOnly excluded ---');

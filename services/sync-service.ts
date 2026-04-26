@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ClipEntry, isLocalOnly, isTombstone } from '@/types/clip';
+import { ClipEntry, isLocalOnly, isTombstone, getSortKey } from '@/types/clip';
 import {
   loadAllEntriesIncludingDeleted,
   saveEntries,
@@ -109,7 +109,7 @@ export function mergeEntries(local: ClipEntry[], cloud: ClipEntry[]): ClipEntry[
     byId.set(cloudEntry.id, merged);
   }
   const out = Array.from(byId.values());
-  out.sort((a, b) => b.updatedAt - a.updatedAt);
+  out.sort((a, b) => getSortKey(b) - getSortKey(a));
   return out;
 }
 

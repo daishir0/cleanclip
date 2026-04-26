@@ -12,10 +12,12 @@ import { EntryCard } from '@/components/EntryCard';
 import { CopyFeedback } from '@/components/CopyFeedback';
 import { ClipEntry } from '@/types/clip';
 
+const TABLET_MAX_WIDTH = 720;
+
 export default function EntryListScreen() {
-  const { entries, deleteEntry, reorderEntries, theme, syncEnabled, syncAvailable, syncStatus, triggerSync } = useApp();
+  const { entries, deleteEntry, reorderEntry, theme, syncEnabled, syncAvailable, syncStatus, triggerSync } = useApp();
   const { copiedText, showFeedback, triggerCopy } = useCopyFeedback();
-  const { isTablet, numColumns } = useResponsive();
+  const { isTablet } = useResponsive();
   const { t } = useT();
   const { showToast } = useToast();
   const router = useRouter();
@@ -77,18 +79,18 @@ export default function EntryListScreen() {
   const handleMoveUp = useCallback((id: string) => {
     const idx = entries.findIndex(e => e.id === id);
     if (idx <= 0) return;
-    const next = [...entries];
-    [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
-    reorderEntries(next);
-  }, [entries, reorderEntries]);
+    const above = idx >= 2 ? entries[idx - 2] : null;
+    const below = entries[idx - 1];
+    reorderEntry(id, above, below);
+  }, [entries, reorderEntry]);
 
   const handleMoveDown = useCallback((id: string) => {
     const idx = entries.findIndex(e => e.id === id);
     if (idx < 0 || idx >= entries.length - 1) return;
-    const next = [...entries];
-    [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
-    reorderEntries(next);
-  }, [entries, reorderEntries]);
+    const above = entries[idx + 1];
+    const below = idx + 2 < entries.length ? entries[idx + 2] : null;
+    reorderEntry(id, above, below);
+  }, [entries, reorderEntry]);
 
   const renderItem = useCallback(({ item, drag, isActive }: RenderItemParams<ClipEntry>) => (
     <EntryCard entry={item} isExpanded={expandedId === item.id}
@@ -108,57 +110,65 @@ export default function EntryListScreen() {
       isFirst={entries.indexOf(item) === 0} isLast={entries.indexOf(item) === entries.length - 1} />
   ), [expandedId, handleToggle, handleEdit, handleDelete, handleCopyAll, triggerCopy, handleMoveUp, handleMoveDown, entries]);
 
-  const handleDragEnd = useCallback(({ data }: { data: ClipEntry[] }) => {
-    reorderEntries(data);
-  }, [reorderEntries]);
+  const handleDragEnd = useCallback(({ data, from, to }: { data: ClipEntry[]; from: number; to: number }) => {
+    if (from === to) return;
+    if (to < 0 || to >= data.length) return;
+    const moved = data[to];
+    const above = to > 0 ? data[to - 1] : null;
+    const below = to < data.length - 1 ? data[to + 1] : null;
+    reorderEntry(moved.id, above, below);
+  }, [reorderEntry]);
+
+  const refreshControl = syncAvailable && syncEnabled ? (
+    <RefreshControl refreshing={refreshing || syncStatus === 'syncing'} onRefresh={onRefresh} tintColor={theme.accent} />
+  ) : undefined;
+
+  const tabletWrapStyle = isTablet ? styles.tabletWrap : undefined;
 
   return (
     <View style={[styles.container, { backgroundColor: theme.bg }]}>
       <CopyFeedback visible={showFeedback} text={copiedText} />
-      {entries.length > 0 && (
-        <View style={[styles.searchContainer, { backgroundColor: theme.bg }]}>
-          <View style={[styles.searchBar, { backgroundColor: theme.bgSecondary, borderColor: theme.border }]}>
-            <Ionicons name="search" size={18} color={theme.textSecondary} />
-            <TextInput style={[styles.searchInput, { color: theme.text }]}
-              value={searchQuery} onChangeText={setSearchQuery}
-              placeholder={t('entryList_searchPlaceholder')} placeholderTextColor={theme.textSecondary}
-              autoCapitalize="none" clearButtonMode="while-editing"
-              accessibilityLabel={t('entryList_search')} />
-            {searchQuery.length > 0 && (
-              <Pressable onPress={() => setSearchQuery('')} style={styles.clearBtn}>
-                <Ionicons name="close-circle" size={18} color={theme.textSecondary} />
-              </Pressable>
-            )}
+      <View style={[styles.innerWrap, tabletWrapStyle]}>
+        {entries.length > 0 && (
+          <View style={[styles.searchContainer, { backgroundColor: theme.bg }]}>
+            <View style={[styles.searchBar, { backgroundColor: theme.bgSecondary, borderColor: theme.border }]}>
+              <Ionicons name="search" size={18} color={theme.textSecondary} />
+              <TextInput style={[styles.searchInput, { color: theme.text }]}
+                value={searchQuery} onChangeText={setSearchQuery}
+                placeholder={t('entryList_searchPlaceholder')} placeholderTextColor={theme.textSecondary}
+                autoCapitalize="none" clearButtonMode="while-editing"
+                accessibilityLabel={t('entryList_search')} />
+              {searchQuery.length > 0 && (
+                <Pressable onPress={() => setSearchQuery('')} style={styles.clearBtn}>
+                  <Ionicons name="close-circle" size={18} color={theme.textSecondary} />
+                </Pressable>
+              )}
+            </View>
           </View>
-        </View>
-      )}
-      {filteredEntries.length === 0 && entries.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Ionicons name="clipboard-outline" size={64} color={theme.textSecondary} />
-          <Text style={[styles.emptyText, { color: theme.textSecondary }]}>{t('entryList_empty')}</Text>
-          <Text style={[styles.emptySubtext, { color: theme.textSecondary }]}>{t('entryList_emptyHint')}</Text>
-        </View>
-      ) : filteredEntries.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Ionicons name="search-outline" size={48} color={theme.textSecondary} />
-          <Text style={[styles.emptySubtext, { color: theme.textSecondary }]}>{t('entryList_noResults')}</Text>
-        </View>
-      ) : searchQuery.trim() || (isTablet && numColumns > 1) ? (
-        <FlatList data={filteredEntries} keyExtractor={item => item.id} renderItem={renderFlatItem}
-          contentContainerStyle={styles.listContent} key={numColumns}
-          numColumns={isTablet ? numColumns : 1} columnWrapperStyle={numColumns > 1 ? styles.columnWrapper : undefined}
-          refreshControl={syncAvailable && syncEnabled ? (
-            <RefreshControl refreshing={refreshing || syncStatus === 'syncing'} onRefresh={onRefresh} tintColor={theme.accent} />
-          ) : undefined}
-        />
-      ) : (
-        <DraggableFlatList data={filteredEntries} keyExtractor={item => item.id} renderItem={renderItem}
-          onDragEnd={handleDragEnd} contentContainerStyle={styles.listContent}
-          refreshControl={syncAvailable && syncEnabled ? (
-            <RefreshControl refreshing={refreshing || syncStatus === 'syncing'} onRefresh={onRefresh} tintColor={theme.accent} />
-          ) : undefined}
-        />
-      )}
+        )}
+        {filteredEntries.length === 0 && entries.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Ionicons name="clipboard-outline" size={64} color={theme.textSecondary} />
+            <Text style={[styles.emptyText, { color: theme.textSecondary }]}>{t('entryList_empty')}</Text>
+            <Text style={[styles.emptySubtext, { color: theme.textSecondary }]}>{t('entryList_emptyHint')}</Text>
+          </View>
+        ) : filteredEntries.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Ionicons name="search-outline" size={48} color={theme.textSecondary} />
+            <Text style={[styles.emptySubtext, { color: theme.textSecondary }]}>{t('entryList_noResults')}</Text>
+          </View>
+        ) : searchQuery.trim() ? (
+          <FlatList data={filteredEntries} keyExtractor={item => item.id} renderItem={renderFlatItem}
+            contentContainerStyle={styles.listContent}
+            refreshControl={refreshControl}
+          />
+        ) : (
+          <DraggableFlatList data={filteredEntries} keyExtractor={item => item.id} renderItem={renderItem}
+            onDragEnd={handleDragEnd} contentContainerStyle={styles.listContent}
+            refreshControl={refreshControl}
+          />
+        )}
+      </View>
       <Pressable onPress={() => router.push('/entry-edit')} style={[styles.fab, { backgroundColor: theme.accent }]}
         accessibilityLabel={t('entryList_addEntry')} accessibilityRole="button">
         <Ionicons name="add" size={28} color="#fff" />
@@ -169,12 +179,13 @@ export default function EntryListScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  innerWrap: { flex: 1, width: '100%' },
+  tabletWrap: { maxWidth: TABLET_MAX_WIDTH, alignSelf: 'center' },
   searchContainer: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4 },
   searchBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: StyleSheet.hairlineWidth, gap: 8 },
   searchInput: { flex: 1, fontSize: 16, padding: 0 },
   clearBtn: { padding: 2 },
   listContent: { paddingVertical: 8 },
-  columnWrapper: { paddingHorizontal: 8 },
   emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
   emptyText: { fontSize: 18, fontWeight: '600' },
   emptySubtext: { fontSize: 14 },
