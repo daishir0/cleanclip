@@ -1,125 +1,141 @@
 import * as Crypto from 'expo-crypto';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { gcm } from '@noble/ciphers/aes.js';
+import { bytesToHex, hexToBytes, utf8ToBytes, bytesToUtf8 } from '@noble/ciphers/utils.js';
 
-const ENCRYPTION_KEY_ID = 'cleanclip_encryption_key';
-const IV_LENGTH = 12; // 96 bits for GCM
+const LOCAL_KEY_ID = 'cleanclip_encryption_key';
+const SYNC_KEYCHAIN_SERVICE = 'cleanclip.sync.masterkey';
+const SYNC_KEYCHAIN_USERNAME = 'cleanclip-master';
+const IV_LENGTH = 12;
 
-/**
- * Get or generate the encryption key.
- * On iOS: Stored in SecureStore (Keychain) with AFTER_FIRST_UNLOCK.
- * On Web: Falls back to AsyncStorage (less secure, but functional for dev/testing).
- */
-async function getOrCreateKey(): Promise<string> {
-  let key: string | null = null;
+let _keychainModule: any = null;
+function getKeychain(): any {
+  if (Platform.OS !== 'ios') return null;
+  if (_keychainModule) return _keychainModule;
+  try {
+    _keychainModule = require('react-native-keychain');
+    return _keychainModule;
+  } catch {
+    return null;
+  }
+}
 
+function bytesToBase64(bytes: Uint8Array): string {
+  if (typeof globalThis.btoa === 'function') {
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    return globalThis.btoa(binary);
+  }
+  return Buffer.from(bytes).toString('base64');
+}
+
+function base64ToBytes(b64: string): Uint8Array {
+  if (typeof globalThis.atob === 'function') {
+    const binary = globalThis.atob(b64);
+    const out = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
+    return out;
+  }
+  return new Uint8Array(Buffer.from(b64, 'base64'));
+}
+
+async function generateKeyHex(): Promise<string> {
+  const bytes = await Crypto.getRandomBytesAsync(32);
+  return bytesToHex(new Uint8Array(bytes));
+}
+
+async function getOrCreateLocalKey(): Promise<string> {
   if (Platform.OS === 'web') {
-    // Web fallback: use AsyncStorage
-    key = await AsyncStorage.getItem(ENCRYPTION_KEY_ID);
-  } else {
-    // Native: use SecureStore
-    const SecureStore = await import('expo-secure-store');
-    key = await SecureStore.getItemAsync(ENCRYPTION_KEY_ID, {
+    let key = await AsyncStorage.getItem(LOCAL_KEY_ID);
+    if (!key) {
+      key = await generateKeyHex();
+      await AsyncStorage.setItem(LOCAL_KEY_ID, key);
+    }
+    return key;
+  }
+  const SecureStore = await import('expo-secure-store');
+  let key = await SecureStore.getItemAsync(LOCAL_KEY_ID, {
+    keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK,
+  });
+  if (!key) {
+    key = await generateKeyHex();
+    await SecureStore.setItemAsync(LOCAL_KEY_ID, key, {
       keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK,
     });
-  }
-
-  if (!key) {
-    const randomBytes = await Crypto.getRandomBytesAsync(32);
-    key = Array.from(randomBytes).map(b => b.toString(16).padStart(2, '0')).join('');
-
-    if (Platform.OS === 'web') {
-      await AsyncStorage.setItem(ENCRYPTION_KEY_ID, key);
-    } else {
-      const SecureStore = await import('expo-secure-store');
-      await SecureStore.setItemAsync(ENCRYPTION_KEY_ID, key, {
-        keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK,
-      });
-    }
   }
   return key;
 }
 
-/**
- * Simple XOR-based encryption using the key.
- * This is a lightweight approach for local storage protection.
- * For production, this should be replaced with native AES-256-GCM
- * via a native module when building with EAS Build.
- *
- * The key from SecureStore (Keychain) ensures that:
- * 1. Data at rest in AsyncStorage is not plaintext
- * 2. The key itself is protected by the Secure Enclave
- * 3. Key syncs across devices via iCloud Keychain (E2E encrypted)
- */
-
-function hexToBytes(hex: string): Uint8Array {
-  const bytes = new Uint8Array(hex.length / 2);
-  for (let i = 0; i < hex.length; i += 2) {
-    bytes[i / 2] = parseInt(hex.substring(i, i + 2), 16);
+async function getOrCreateSyncKey(): Promise<string | null> {
+  const Keychain = getKeychain();
+  if (!Keychain) return null;
+  try {
+    const existing = await Keychain.getGenericPassword({
+      service: SYNC_KEYCHAIN_SERVICE,
+      cloudSync: true,
+    });
+    if (existing && existing.password) return existing.password;
+  } catch {
   }
-  return bytes;
+  const newKey = await generateKeyHex();
+  try {
+    await Keychain.setGenericPassword(SYNC_KEYCHAIN_USERNAME, newKey, {
+      service: SYNC_KEYCHAIN_SERVICE,
+      accessible: Keychain.ACCESSIBLE.AFTER_FIRST_UNLOCK,
+      cloudSync: true,
+    });
+    return newKey;
+  } catch {
+    return null;
+  }
 }
 
-function bytesToHex(bytes: Uint8Array): string {
-  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+async function fetchSyncKey(): Promise<string | null> {
+  const Keychain = getKeychain();
+  if (!Keychain) return null;
+  try {
+    const result = await Keychain.getGenericPassword({
+      service: SYNC_KEYCHAIN_SERVICE,
+      cloudSync: true,
+    });
+    if (result && result.password) return result.password;
+  } catch {
+  }
+  return null;
 }
 
-function textToBytes(text: string): Uint8Array {
-  const encoder = new TextEncoder();
-  return encoder.encode(text);
-}
-
-function bytesToText(bytes: Uint8Array): string {
-  const decoder = new TextDecoder();
-  return decoder.decode(bytes);
-}
-
-/**
- * Encrypt plaintext using key-derived stream cipher.
- * Format: IV_HEX + ':' + CIPHERTEXT_HEX
- */
-export async function encrypt(plaintext: string): Promise<string> {
-  const keyHex = await getOrCreateKey();
+async function aesGcmEncrypt(plaintext: string, keyHex: string): Promise<string> {
   const keyBytes = hexToBytes(keyHex);
-  const ivBytes = await Crypto.getRandomBytesAsync(IV_LENGTH);
-  const plaintextBytes = textToBytes(plaintext);
-
-  // Derive a stream from key + IV using repeated hashing
-  const cipherBytes = new Uint8Array(plaintextBytes.length);
-  let streamBlock = new Uint8Array([...Array.from(keyBytes), ...Array.from(ivBytes)]);
-
-  for (let i = 0; i < plaintextBytes.length; i += 32) {
-    // Hash the current stream block to get next 32 bytes of keystream
-    const hashHex = await Crypto.digestStringAsync(
-      Crypto.CryptoDigestAlgorithm.SHA256,
-      bytesToHex(streamBlock) + i.toString(16),
-    );
-    const hashBytes = hexToBytes(hashHex);
-    streamBlock = new Uint8Array(hashBytes);
-
-    for (let j = 0; j < 32 && (i + j) < plaintextBytes.length; j++) {
-      cipherBytes[i + j] = plaintextBytes[i + j] ^ hashBytes[j];
-    }
-  }
-
-  return bytesToHex(new Uint8Array(ivBytes)) + ':' + bytesToHex(cipherBytes);
+  const ivBytesRaw = await Crypto.getRandomBytesAsync(IV_LENGTH);
+  const ivBytes = new Uint8Array(ivBytesRaw);
+  const cipher = gcm(keyBytes, ivBytes);
+  const ciphertext = cipher.encrypt(utf8ToBytes(plaintext));
+  return `v2:${bytesToBase64(ivBytes)}:${bytesToBase64(ciphertext)}`;
 }
 
-/**
- * Decrypt ciphertext.
- */
-export async function decrypt(ciphertext: string): Promise<string> {
-  const colonIdx = ciphertext.indexOf(':');
-  if (colonIdx === -1) throw new Error('Invalid ciphertext format');
+async function aesGcmDecrypt(payload: string, keyHex: string): Promise<string> {
+  const parts = payload.split(':');
+  if (parts.length !== 3 || parts[0] !== 'v2') throw new Error('not v2 payload');
+  const keyBytes = hexToBytes(keyHex);
+  const ivBytes = base64ToBytes(parts[1]);
+  const ctBytes = base64ToBytes(parts[2]);
+  const cipher = gcm(keyBytes, ivBytes);
+  const plain = cipher.decrypt(ctBytes);
+  return bytesToUtf8(plain);
+}
 
-  const keyHex = await getOrCreateKey();
+async function legacyXorDecrypt(ciphertext: string, keyHex: string): Promise<string> {
+  const colonIdx = ciphertext.indexOf(':');
+  if (colonIdx === -1) throw new Error('Invalid legacy ciphertext format');
   const keyBytes = hexToBytes(keyHex);
   const ivBytes = hexToBytes(ciphertext.substring(0, colonIdx));
   const cipherBytes = hexToBytes(ciphertext.substring(colonIdx + 1));
-
   const plaintextBytes = new Uint8Array(cipherBytes.length);
-  let streamBlock = new Uint8Array([...Array.from(keyBytes), ...Array.from(ivBytes)]);
-
+  const initStream = new Uint8Array(keyBytes.length + ivBytes.length);
+  initStream.set(keyBytes, 0);
+  initStream.set(ivBytes, keyBytes.length);
+  let streamBlock = initStream;
   for (let i = 0; i < cipherBytes.length; i += 32) {
     const hashHex = await Crypto.digestStringAsync(
       Crypto.CryptoDigestAlgorithm.SHA256,
@@ -127,23 +143,65 @@ export async function decrypt(ciphertext: string): Promise<string> {
     );
     const hashBytes = hexToBytes(hashHex);
     streamBlock = new Uint8Array(hashBytes);
-
     for (let j = 0; j < 32 && (i + j) < cipherBytes.length; j++) {
       plaintextBytes[i + j] = cipherBytes[i + j] ^ hashBytes[j];
     }
   }
-
-  return bytesToText(plaintextBytes);
+  return bytesToUtf8(plaintextBytes);
 }
 
-/**
- * Delete encryption key (used for "delete all data").
- */
+export interface CryptoOpts {
+  synced?: boolean;
+}
+
+export async function encrypt(plaintext: string, opts: CryptoOpts = {}): Promise<string> {
+  const keyHex = opts.synced ? await getOrCreateSyncKey() : await getOrCreateLocalKey();
+  if (!keyHex) throw new Error('encryption key unavailable');
+  return aesGcmEncrypt(plaintext, keyHex);
+}
+
+export async function decrypt(payload: string, opts: CryptoOpts = {}): Promise<string> {
+  const keyHex = opts.synced ? await fetchSyncKey() : await getOrCreateLocalKey();
+  if (!keyHex) throw new Error('decryption key unavailable');
+  if (payload.startsWith('v2:')) return aesGcmDecrypt(payload, keyHex);
+  if (opts.synced) throw new Error('legacy payload not supported on sync channel');
+  return legacyXorDecrypt(payload, keyHex);
+}
+
+export async function getMasterKeyFingerprint(synced: boolean): Promise<string | null> {
+  const keyHex = synced ? await fetchSyncKey() : await getOrCreateLocalKey();
+  if (!keyHex) return null;
+  const hashHex = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, keyHex);
+  return hashHex.substring(0, 16);
+}
+
+export async function ensureSyncKey(): Promise<boolean> {
+  const k = await getOrCreateSyncKey();
+  return !!k;
+}
+
+export async function hasSyncKey(): Promise<boolean> {
+  const k = await fetchSyncKey();
+  return !!k;
+}
+
 export async function deleteEncryptionKey(): Promise<void> {
   if (Platform.OS === 'web') {
-    await AsyncStorage.removeItem(ENCRYPTION_KEY_ID);
-  } else {
-    const SecureStore = await import('expo-secure-store');
-    await SecureStore.deleteItemAsync(ENCRYPTION_KEY_ID);
+    await AsyncStorage.removeItem(LOCAL_KEY_ID);
+    return;
+  }
+  const SecureStore = await import('expo-secure-store');
+  await SecureStore.deleteItemAsync(LOCAL_KEY_ID);
+}
+
+export async function deleteSyncMasterKey(): Promise<void> {
+  const Keychain = getKeychain();
+  if (!Keychain) return;
+  try {
+    await Keychain.resetGenericPassword({
+      service: SYNC_KEYCHAIN_SERVICE,
+      cloudSync: true,
+    });
+  } catch {
   }
 }

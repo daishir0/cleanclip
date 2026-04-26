@@ -1,12 +1,22 @@
 export type ClipEntry = {
   id: string;
-  name: string;          // entry title
-  content: string;       // single textarea (newline = multiple lines)
-  masked: boolean;       // mask toggle for entire entry
+  name: string;
+  content: string;
+  masked: boolean;
   createdAt: number;
   updatedAt: number;
+  deletedAt?: number;
+  localOnly?: boolean;
 };
 
 export type AppSettings = Record<string, never>;
 
 export const DEFAULT_SETTINGS: AppSettings = {};
+
+export function isTombstone(e: ClipEntry): boolean {
+  return typeof e.deletedAt === 'number' && e.deletedAt > 0;
+}
+
+export function isLocalOnly(e: ClipEntry): boolean {
+  return e.localOnly === true;
+}
