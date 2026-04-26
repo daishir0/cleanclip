@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { View, FlatList, Text, TextInput, Pressable, StyleSheet, Alert, Platform } from 'react-native';
+import { View, FlatList, Text, TextInput, Pressable, StyleSheet, Alert, Platform, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import DraggableFlatList, { RenderItemParams } from 'react-native-draggable-flatlist';
@@ -7,18 +7,40 @@ import { useApp } from '@/contexts/AppContext';
 import { useCopyFeedback } from '@/hooks/use-copy-feedback';
 import { useResponsive } from '@/hooks/use-responsive';
 import { useT } from '@/i18n';
+import { useToast } from '@/components/Toast';
 import { EntryCard } from '@/components/EntryCard';
 import { CopyFeedback } from '@/components/CopyFeedback';
 import { ClipEntry } from '@/types/clip';
 
 export default function EntryListScreen() {
-  const { entries, deleteEntry, reorderEntries, theme } = useApp();
+  const { entries, deleteEntry, reorderEntries, theme, syncEnabled, syncAvailable, syncStatus, triggerSync } = useApp();
   const { copiedText, showFeedback, triggerCopy } = useCopyFeedback();
   const { isTablet, numColumns } = useResponsive();
   const { t } = useT();
+  const { showToast } = useToast();
   const router = useRouter();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(async () => {
+    if (!syncAvailable || !syncEnabled) return;
+    setRefreshing(true);
+    try {
+      const result = await triggerSync();
+      if (result.kind === 'ok') {
+        showToast(t('toast_syncOk', { count: String(result.total) }), 'success');
+      } else if (result.kind === 'keyMismatch') {
+        showToast(t('toast_syncKeyMismatch'), 'error');
+      } else if (result.kind === 'error') {
+        showToast(t('toast_syncError'), 'error');
+      } else if (result.kind === 'unavailable') {
+        showToast(t('toast_syncUnavailable'), 'error');
+      }
+    } finally {
+      setRefreshing(false);
+    }
+  }, [syncAvailable, syncEnabled, triggerSync, showToast, t]);
 
   const filteredEntries = useMemo(() => {
     if (!searchQuery.trim()) return entries;
@@ -124,10 +146,18 @@ export default function EntryListScreen() {
       ) : searchQuery.trim() || (isTablet && numColumns > 1) ? (
         <FlatList data={filteredEntries} keyExtractor={item => item.id} renderItem={renderFlatItem}
           contentContainerStyle={styles.listContent} key={numColumns}
-          numColumns={isTablet ? numColumns : 1} columnWrapperStyle={numColumns > 1 ? styles.columnWrapper : undefined} />
+          numColumns={isTablet ? numColumns : 1} columnWrapperStyle={numColumns > 1 ? styles.columnWrapper : undefined}
+          refreshControl={syncAvailable && syncEnabled ? (
+            <RefreshControl refreshing={refreshing || syncStatus === 'syncing'} onRefresh={onRefresh} tintColor={theme.accent} />
+          ) : undefined}
+        />
       ) : (
         <DraggableFlatList data={filteredEntries} keyExtractor={item => item.id} renderItem={renderItem}
-          onDragEnd={handleDragEnd} contentContainerStyle={styles.listContent} />
+          onDragEnd={handleDragEnd} contentContainerStyle={styles.listContent}
+          refreshControl={syncAvailable && syncEnabled ? (
+            <RefreshControl refreshing={refreshing || syncStatus === 'syncing'} onRefresh={onRefresh} tintColor={theme.accent} />
+          ) : undefined}
+        />
       )}
       <Pressable onPress={() => router.push('/entry-edit')} style={[styles.fab, { backgroundColor: theme.accent }]}
         accessibilityLabel={t('entryList_addEntry')} accessibilityRole="button">

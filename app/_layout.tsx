@@ -8,6 +8,7 @@ import { LocaleProvider, useT } from '@/i18n';
 import { AuthGate } from '@/components/AuthGate';
 import { PrivacyOverlay } from '@/components/PrivacyOverlay';
 import { Onboarding, checkOnboarded } from '@/components/Onboarding';
+import { ToastProvider } from '@/components/Toast';
 
 function NavigationContent() {
   const { isDarkMode } = useApp();
@@ -39,7 +40,9 @@ function InnerLayout() {
 
   return (
     <AppProvider>
-      <NavigationContent />
+      <ToastProvider>
+        <NavigationContent />
+      </ToastProvider>
     </AppProvider>
   );
 }

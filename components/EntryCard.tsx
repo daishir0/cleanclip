@@ -88,6 +88,11 @@ export function EntryCard({
               </Pressable>
             </View>
           )}
+          {entry.localOnly && (
+            <View accessibilityLabel={t('entryCard_localOnlyBadge')} style={styles.localBadge}>
+              <Ionicons name="shield-checkmark" size={14} color={theme.success} />
+            </View>
+          )}
           <Text style={[styles.entryName, { color: theme.text }]} numberOfLines={1}>{entry.name}</Text>
           <Pressable onPress={onEdit} style={styles.headerIconBtn}
             accessibilityLabel={t('entryCard_edit')} accessibilityRole="button">
@@ -134,6 +139,7 @@ const styles = StyleSheet.create({
   reorderBtn: { padding: 2 },
   reorderBtnDisabled: { opacity: 0.3 },
   headerIconBtn: { padding: 6 },
+  localBadge: { padding: 2 },
   copyAllBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
   copyAllText: { color: '#fff', fontSize: 13, fontWeight: '600' },
   expandedContent: { paddingHorizontal: 14, paddingBottom: 14, marginHorizontal: 16, marginTop: -6, borderBottomLeftRadius: 12, borderBottomRightRadius: 12, borderWidth: StyleSheet.hairlineWidth, borderTopWidth: 0 },

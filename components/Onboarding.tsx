@@ -15,6 +15,7 @@ const PAGES = [
   { icon: 'lock-closed' as const, titleKey: 'onboarding_title1' as const, descKey: 'onboarding_desc1' as const, color: '#0A84FF' },
   { icon: 'copy' as const, titleKey: 'onboarding_title2' as const, descKey: 'onboarding_desc2' as const, color: '#34C759' },
   { icon: 'sparkles' as const, titleKey: 'onboarding_title3' as const, descKey: 'onboarding_desc3' as const, color: '#FF9500' },
+  { icon: 'cloud-done' as const, titleKey: 'onboarding_title4' as const, descKey: 'onboarding_desc4' as const, color: '#5E5CE6' },
 ];
 
 export function Onboarding({ onComplete }: OnboardingProps) {

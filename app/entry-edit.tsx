@@ -12,13 +12,14 @@ function generateId(): string {
 export default function EntryEditScreen() {
   const router = useRouter();
   const { entryId } = useLocalSearchParams<{ entryId?: string }>();
-  const { entries, addEntry, updateEntry, deleteEntry, theme } = useApp();
+  const { entries, addEntry, updateEntry, deleteEntry, theme, syncAvailable } = useApp();
   const { t } = useT();
 
   const existingEntry = useMemo(() => entries.find(e => e.id === entryId), [entries, entryId]);
   const [name, setName] = useState(existingEntry?.name ?? '');
   const [content, setContent] = useState(existingEntry?.content ?? '');
   const [masked, setMasked] = useState(existingEntry?.masked ?? false);
+  const [localOnly, setLocalOnly] = useState(existingEntry?.localOnly ?? false);
   const isEditing = !!existingEntry;
 
   const handleSave = async () => {
@@ -26,9 +27,23 @@ export default function EntryEditScreen() {
     if (!content.trim()) { Alert.alert(t('common_error'), t('entryEdit_errorNoContent')); return; }
     const now = Date.now();
     if (isEditing && existingEntry) {
-      await updateEntry(existingEntry.id, { name: name.trim(), content: content.trim(), masked, updatedAt: now });
+      await updateEntry(existingEntry.id, {
+        name: name.trim(),
+        content: content.trim(),
+        masked,
+        localOnly,
+        updatedAt: now,
+      });
     } else {
-      await addEntry({ id: generateId(), name: name.trim(), content: content.trim(), masked, createdAt: now, updatedAt: now });
+      await addEntry({
+        id: generateId(),
+        name: name.trim(),
+        content: content.trim(),
+        masked,
+        localOnly,
+        createdAt: now,
+        updatedAt: now,
+      });
     }
     router.back();
   };
@@ -79,6 +94,24 @@ export default function EntryEditScreen() {
             trackColor={{ false: theme.border, true: theme.accent }} accessibilityLabel={t('entryEdit_maskToggle')} />
         </View>
 
+        {syncAvailable && (
+          <View style={[
+            styles.localOnlyRow,
+            { backgroundColor: localOnly ? theme.bgTertiary : 'transparent', borderColor: localOnly ? theme.success : 'transparent' },
+          ]}>
+            <View style={styles.localOnlyTextWrap}>
+              <View style={styles.localOnlyTitleRow}>
+                <Ionicons name="shield-checkmark" size={16} color={localOnly ? theme.success : theme.textSecondary} />
+                <Text style={[styles.localOnlyTitle, { color: theme.text }]}>{t('entryEdit_localOnly')}</Text>
+              </View>
+              <Text style={[styles.localOnlyDesc, { color: theme.textSecondary }]}>{t('entryEdit_localOnlyDesc')}</Text>
+            </View>
+            <Switch value={localOnly} onValueChange={setLocalOnly}
+              trackColor={{ false: theme.border, true: theme.success }}
+              accessibilityLabel={t('entryEdit_localOnlyToggle')} />
+          </View>
+        )}
+
         {isEditing && (
           <Pressable onPress={handleDelete} style={[styles.deleteBtn, { borderColor: theme.danger }]}
             accessibilityLabel={t('entryEdit_deleteEntryLabel')} accessibilityRole="button">
@@ -103,6 +136,14 @@ const styles = StyleSheet.create({
   textArea: { fontSize: 16, padding: 12, borderRadius: 10, borderWidth: StyleSheet.hairlineWidth, minHeight: 150 },
   maskRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 20 },
   maskLabel: { fontSize: 14 },
+  localOnlyRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    marginTop: 20, padding: 12, borderRadius: 10, borderWidth: 1,
+  },
+  localOnlyTextWrap: { flex: 1 },
+  localOnlyTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  localOnlyTitle: { fontSize: 15, fontWeight: '600' },
+  localOnlyDesc: { fontSize: 12, marginTop: 4, lineHeight: 16 },
   deleteBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, padding: 14, borderRadius: 10, borderWidth: 1, marginTop: 32 },
   deleteBtnText: { fontSize: 15, fontWeight: '500' },
 });
