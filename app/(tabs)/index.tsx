@@ -15,7 +15,7 @@ import { ClipEntry } from '@/types/clip';
 const TABLET_MAX_WIDTH = 720;
 
 export default function EntryListScreen() {
-  const { entries, deleteEntry, reorderEntry, theme, syncEnabled, syncAvailable, syncStatus, triggerSync } = useApp();
+  const { entries, deleteEntry, reorderEntry, theme, syncEnabled, syncAvailable, triggerSync } = useApp();
   const { copiedText, showFeedback, triggerCopy } = useCopyFeedback();
   const { isTablet } = useResponsive();
   const { t } = useT();
@@ -120,7 +120,7 @@ export default function EntryListScreen() {
   }, [reorderEntry]);
 
   const refreshControl = syncAvailable && syncEnabled ? (
-    <RefreshControl refreshing={refreshing || syncStatus === 'syncing'} onRefresh={onRefresh} tintColor={theme.accent} />
+    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.accent} />
   ) : undefined;
 
   const tabletWrapStyle = isTablet ? styles.tabletWrap : undefined;
