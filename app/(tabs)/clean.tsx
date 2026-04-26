@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useApp } from '@/contexts/AppContext';
 import { useT } from '@/i18n';
 import { getClipboardText, copyToClipboard } from '@/services/clipboard-service';
@@ -10,6 +11,7 @@ import { CleanPreview } from '@/components/CleanPreview';
 export default function CleanScreen() {
   const { theme } = useApp();
   const { t } = useT();
+  const tabBarHeight = useBottomTabBarHeight();
   const [beforeText, setBeforeText] = useState<string | null>(null);
   const [afterText, setAfterText] = useState<string | null>(null);
   const [applied, setApplied] = useState(false);
@@ -29,7 +31,8 @@ export default function CleanScreen() {
   const handleCancel = () => { setBeforeText(null); setAfterText(null); setApplied(false); };
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: theme.bg }]} contentContainerStyle={styles.content}>
+    <ScrollView style={[styles.container, { backgroundColor: theme.bg }]}
+      contentContainerStyle={[styles.content, { paddingBottom: tabBarHeight + 24 }]}>
       <Pressable onPress={handleReadClipboard} style={[styles.mainButton, { backgroundColor: theme.accent }]}
         accessibilityLabel={t('clean_readClipboard')} accessibilityRole="button">
         <Ionicons name="clipboard-outline" size={22} color="#fff" />

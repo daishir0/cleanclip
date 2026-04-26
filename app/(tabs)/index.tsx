@@ -3,6 +3,7 @@ import { View, FlatList, Text, TextInput, Pressable, StyleSheet, Alert, Platform
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import DraggableFlatList, { RenderItemParams } from 'react-native-draggable-flatlist';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useApp } from '@/contexts/AppContext';
 import { useCopyFeedback } from '@/hooks/use-copy-feedback';
 import { useResponsive } from '@/hooks/use-responsive';
@@ -18,6 +19,7 @@ export default function EntryListScreen() {
   const { entries, deleteEntry, reorderEntry, theme, syncEnabled, syncAvailable, triggerSync } = useApp();
   const { copiedText, showFeedback, triggerCopy } = useCopyFeedback();
   const { isTablet } = useResponsive();
+  const tabBarHeight = useBottomTabBarHeight();
   const { t } = useT();
   const { showToast } = useToast();
   const router = useRouter();
@@ -124,6 +126,7 @@ export default function EntryListScreen() {
   ) : undefined;
 
   const tabletWrapStyle = isTablet ? styles.tabletWrap : undefined;
+  const listContentStyle = [styles.listContent, { paddingBottom: tabBarHeight + 96 }];
 
   return (
     <View style={[styles.container, { backgroundColor: theme.bg }]}>
@@ -159,17 +162,18 @@ export default function EntryListScreen() {
           </View>
         ) : searchQuery.trim() ? (
           <FlatList data={filteredEntries} keyExtractor={item => item.id} renderItem={renderFlatItem}
-            contentContainerStyle={styles.listContent}
+            contentContainerStyle={listContentStyle}
             refreshControl={refreshControl}
           />
         ) : (
           <DraggableFlatList data={filteredEntries} keyExtractor={item => item.id} renderItem={renderItem}
-            onDragEnd={handleDragEnd} contentContainerStyle={styles.listContent}
+            onDragEnd={handleDragEnd} contentContainerStyle={listContentStyle}
             refreshControl={refreshControl}
           />
         )}
       </View>
-      <Pressable onPress={() => router.push('/entry-edit')} style={[styles.fab, { backgroundColor: theme.accent }]}
+      <Pressable onPress={() => router.push('/entry-edit')}
+        style={[styles.fab, { backgroundColor: theme.accent, bottom: tabBarHeight + 16 }]}
         accessibilityLabel={t('entryList_addEntry')} accessibilityRole="button">
         <Ionicons name="add" size={28} color="#fff" />
       </Pressable>
@@ -189,5 +193,5 @@ const styles = StyleSheet.create({
   emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
   emptyText: { fontSize: 18, fontWeight: '600' },
   emptySubtext: { fontSize: 14 },
-  fab: { position: 'absolute', right: 20, bottom: 24, width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4, elevation: 5 },
+  fab: { position: 'absolute', right: 20, width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4, elevation: 5 },
 });
