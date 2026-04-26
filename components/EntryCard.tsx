@@ -119,7 +119,7 @@ export function EntryCard({
     </View>
   );
 
-  if (Platform.OS === 'web') {
+  if (Platform.OS === 'web' || isExpanded) {
     return cardContent;
   }
 
