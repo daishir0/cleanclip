@@ -33,7 +33,22 @@
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "react-native-cloud-store",
+        {
+          "iCloud": {
+            "kv": { "enabled": true },
+            "documents": [
+              {
+                "containerId": "iCloud.jp.path-finder.cleanclip",
+                "enabled": true,
+                "visible": false
+              }
+            ]
+          }
+        }
+      ]
     ],
     "locales": {
       "ja": "./i18n/native/ja.json",
