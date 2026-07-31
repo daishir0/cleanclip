@@ -11,6 +11,7 @@ import { useT } from '@/i18n';
 import { useToast } from '@/components/Toast';
 import { EntryCard } from '@/components/EntryCard';
 import { CopyFeedback } from '@/components/CopyFeedback';
+import { DraggableFab } from '@/components/DraggableFab';
 import { ClipEntry } from '@/types/clip';
 
 const TABLET_MAX_WIDTH = 720;
@@ -36,6 +37,8 @@ export default function EntryListScreen() {
         showToast(t('toast_syncOk', { count: String(result.total) }), 'success');
       } else if (result.kind === 'keyMismatch') {
         showToast(t('toast_syncKeyMismatch'), 'error');
+      } else if (result.kind === 'quotaExceeded') {
+        showToast(t('toast_syncQuotaExceeded'), 'error');
       } else if (result.kind === 'error') {
         showToast(t('toast_syncError'), 'error');
       } else if (result.kind === 'unavailable') {
@@ -172,11 +175,11 @@ export default function EntryListScreen() {
           />
         )}
       </View>
-      <Pressable onPress={() => router.push('/entry-edit')}
-        style={[styles.fab, { backgroundColor: theme.accent, bottom: tabBarHeight + 16 }]}
-        accessibilityLabel={t('entryList_addEntry')} accessibilityRole="button">
+      <DraggableFab onPress={() => router.push('/entry-edit')}
+        bottomInset={tabBarHeight} backgroundColor={theme.accent}
+        accessibilityLabel={t('entryList_addEntry')}>
         <Ionicons name="add" size={28} color="#fff" />
-      </Pressable>
+      </DraggableFab>
     </View>
   );
 }
@@ -193,5 +196,4 @@ const styles = StyleSheet.create({
   emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
   emptyText: { fontSize: 18, fontWeight: '600' },
   emptySubtext: { fontSize: 14 },
-  fab: { position: 'absolute', right: 20, width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4, elevation: 5 },
 });

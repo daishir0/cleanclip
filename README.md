@@ -15,6 +15,8 @@
 - **多言語対応**: 日本語・英語
 - **ダークモード**: ライト/ダーク切り替え対応
 - **データ管理**: JSON形式でのエクスポート・インポート、iCloud同期
+- **同期の自動リトライ**: 一時的な同期エラー時は指数バックオフで自動再試行
+- **移動できる＋ボタン**: 新規作成ボタンはドラッグで好きな位置に配置可能（位置は保存されます）
 
 ## 技術スタック
 
@@ -95,6 +97,36 @@ npx expo start --android
 
 # Webブラウザ
 npx expo start --web
+```
+
+## Macでの利用
+
+### Apple Silicon Mac（推奨）
+
+本アプリは iPad 対応（`supportsTablet: true`）のため、Apple Silicon 搭載 Mac では「Designed for iPad」アプリとしてそのまま動作します。
+
+- **App Store 配信時**: App Store Connect の「価格および配信状況」→「Apple シリコン搭載 Mac 上の iPhone および iPad アプリ」で「Mac で利用可能にする」が有効になっていることを確認してください（デフォルトで有効）。
+- **TestFlight**: Apple Silicon Mac の TestFlight アプリから直接インストールできます。
+- **注意**: Mac 上ではスクリーンキャプチャ防止が機能しません（アプリ内の設定画面にも注記あり）。
+
+### Intel Mac / その他
+
+Web 版をブラウザで利用できます。
+
+```bash
+# 開発サーバー
+npx expo start --web
+
+# 静的ビルド（dist/ に出力）
+npx expo export --platform web
+```
+
+※ Web 版では iCloud 同期・生体認証・スクリーンキャプチャ防止は利用できません。
+
+## テスト
+
+```bash
+npm test   # tests/*.test.mjs をすべて実行（同期マージ・クリーニング・リトライバックオフ）
 ```
 
 ## 開発コマンド

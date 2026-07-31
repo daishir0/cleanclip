@@ -21,6 +21,7 @@ import {
   type SyncStatus,
   type SyncResult,
 } from '@/services/sync-service';
+import { nextRetryDelay, shouldRetrySync, SYNC_RETRY_MAX_ATTEMPTS } from '@/utils/backoff';
 
 interface AppContextType {
   entries: ClipEntry[];
@@ -86,6 +87,35 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const syncEnabledRef = useRef(false);
   syncEnabledRef.current = syncEnabled;
 
+  const retryAttemptRef = useRef(0);
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const triggerSyncRef = useRef<(opts?: { silent?: boolean }) => Promise<SyncResult>>(
+    async () => ({ kind: 'noop' }),
+  );
+
+  const clearSyncRetry = useCallback(() => {
+    if (retryTimerRef.current) {
+      clearTimeout(retryTimerRef.current);
+      retryTimerRef.current = null;
+    }
+  }, []);
+
+  const scheduleSyncRetry = useCallback(() => {
+    if (!syncEnabledRef.current) return;
+    if (retryAttemptRef.current >= SYNC_RETRY_MAX_ATTEMPTS) return;
+    const delay = nextRetryDelay(retryAttemptRef.current);
+    retryAttemptRef.current += 1;
+    clearSyncRetry();
+    retryTimerRef.current = setTimeout(() => {
+      retryTimerRef.current = null;
+      triggerSyncRef.current({ silent: true }).catch(err => {
+        console.warn('[sync] retry failed', err);
+      });
+    }, delay);
+  }, [clearSyncRetry]);
+
+  useEffect(() => clearSyncRetry, [clearSyncRetry]);
+
   const visibleEntries = useMemo(() => {
     return allEntries
       .filter(e => !isTombstone(e))
@@ -127,24 +157,36 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const triggerSync = useCallback(async (opts: { silent?: boolean } = {}): Promise<SyncResult> => {
     if (!isCloudSyncAvailable()) return { kind: 'unavailable', reason: 'platform' };
     lastSyncAttemptRef.current = Date.now();
+    clearSyncRetry();
     setSyncStatus('syncing');
     const result = await performSync(opts);
     if (result.kind === 'ok') {
+      retryAttemptRef.current = 0;
       setSyncStatus('idle');
-      const ts = await getLastSyncAt();
-      setLastSyncAt(ts);
-      await reloadFromStorage();
+      try {
+        const ts = await getLastSyncAt();
+        setLastSyncAt(ts);
+        await reloadFromStorage();
+      } catch (err) {
+        console.warn('[sync] post-sync refresh failed', err);
+      }
     } else if (result.kind === 'noop') {
+      retryAttemptRef.current = 0;
       setSyncStatus('disabled');
     } else if (result.kind === 'keyMismatch') {
       setSyncStatus('keyMismatch');
+    } else if (result.kind === 'quotaExceeded') {
+      setSyncStatus('quotaExceeded');
     } else if (result.kind === 'unavailable') {
       setSyncStatus('unavailable');
     } else {
       setSyncStatus('error');
+      console.warn('[sync] sync failed:', result.message);
+      if (shouldRetrySync(result.kind)) scheduleSyncRetry();
     }
     return result;
-  }, [reloadFromStorage]);
+  }, [reloadFromStorage, clearSyncRetry, scheduleSyncRetry]);
+  triggerSyncRef.current = triggerSync;
 
   useEffect(() => {
     if (!loaded || !syncAvailable || !syncEnabled) return;
@@ -160,7 +202,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!syncAvailable) return;
     const unregister = registerRemoteChangeListener(() => {
       if (!syncEnabledRef.current) return;
-      triggerSync({ silent: true }).catch(() => {});
+      triggerSync({ silent: true }).catch(err => console.warn('[sync] auto sync failed', err));
     });
     return unregister;
   }, [syncAvailable, triggerSync]);
@@ -171,7 +213,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (!syncEnabledRef.current) return;
       const since = Date.now() - lastSyncAttemptRef.current;
       if (since < AUTOSYNC_MIN_INTERVAL_MS) return;
-      triggerSync({ silent: true }).catch(() => {});
+      triggerSync({ silent: true }).catch(err => console.warn('[sync] auto sync failed', err));
     };
     const sub = AppState.addEventListener('change', handleAppStateChange);
     return () => sub.remove();
@@ -189,7 +231,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const withKey: ClipEntry = { ...entry, sortKey };
     const next = [withKey, ...entriesRef.current];
     await persistAll(next);
-    if (syncEnabledRef.current) triggerSync({ silent: true }).catch(() => {});
+    if (syncEnabledRef.current) triggerSync({ silent: true }).catch(err => console.warn('[sync] auto sync failed', err));
   }, [persistAll, triggerSync]);
 
   const updateEntry = useCallback(async (id: string, updates: Partial<ClipEntry>) => {
@@ -197,7 +239,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       e.id === id ? { ...e, ...updates, updatedAt: Date.now() } : e
     );
     await persistAll(next);
-    if (syncEnabledRef.current) triggerSync({ silent: true }).catch(() => {});
+    if (syncEnabledRef.current) triggerSync({ silent: true }).catch(err => console.warn('[sync] auto sync failed', err));
   }, [persistAll, triggerSync]);
 
   const deleteEntry = useCallback(async (id: string) => {
@@ -217,7 +259,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return wiped;
     });
     await persistAll(next);
-    if (syncEnabledRef.current) triggerSync({ silent: true }).catch(() => {});
+    if (syncEnabledRef.current) triggerSync({ silent: true }).catch(err => console.warn('[sync] auto sync failed', err));
   }, [persistAll, triggerSync]);
 
   const reorderEntry = useCallback(async (id: string, above: ClipEntry | null, below: ClipEntry | null) => {
@@ -238,7 +280,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       e.id === id ? { ...e, sortKey: newKey, updatedAt: now } : e
     );
     await persistAll(next);
-    if (syncEnabledRef.current) triggerSync({ silent: true }).catch(() => {});
+    if (syncEnabledRef.current) triggerSync({ silent: true }).catch(err => console.warn('[sync] auto sync failed', err));
   }, [persistAll, triggerSync]);
 
   const setEntryLocalOnly = useCallback(async (id: string, value: boolean) => {
@@ -247,7 +289,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       e.id === id ? { ...e, localOnly: value, updatedAt: now } : e
     );
     await persistAll(next);
-    if (syncEnabledRef.current) triggerSync({ silent: true }).catch(() => {});
+    if (syncEnabledRef.current) triggerSync({ silent: true }).catch(err => console.warn('[sync] auto sync failed', err));
   }, [persistAll, triggerSync]);
 
   const updateSettingsHandler = useCallback(async (newSettings: AppSettings) => {
@@ -273,20 +315,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       try { await clearAllCloudData(); } catch {}
       try { await deleteSyncMasterKey(); } catch {}
     }
+    clearSyncRetry();
+    retryAttemptRef.current = 0;
     setSyncEnabledState(false);
     setLastSyncAt(null);
     setSyncStatus('idle');
-  }, []);
+  }, [clearSyncRetry]);
 
   const setSyncEnabled = useCallback(async (enabled: boolean) => {
     setSyncEnabledState(enabled);
     await writeSyncEnabled(enabled);
     if (enabled) {
-      const r = await triggerSync({ silent: true });
+      await triggerSync({ silent: true });
       return;
     }
+    clearSyncRetry();
+    retryAttemptRef.current = 0;
     setSyncStatus('disabled');
-  }, [triggerSync]);
+  }, [triggerSync, clearSyncRetry]);
 
   return (
     <AppContext.Provider

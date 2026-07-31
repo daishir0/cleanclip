@@ -75,6 +75,7 @@ export const en = {
   settings_syncStatusKeyMismatch: 'Key mismatch',
   settings_syncStatusUnavailable: 'iCloud unavailable',
   settings_syncStatusDisabled: 'Sync off',
+  settings_syncStatusQuotaExceeded: 'iCloud storage full',
   settings_syncLastSynced: 'Last synced: {{time}}',
   settings_syncNever: 'Never synced',
   settings_syncNow: 'Sync now',
@@ -144,6 +145,7 @@ export const en = {
   toast_syncError: 'Sync failed',
   toast_syncKeyMismatch: 'Key mismatch — check iCloud Keychain',
   toast_syncUnavailable: 'iCloud unavailable',
+  toast_syncQuotaExceeded: 'Not enough iCloud storage',
 
   copyFeedback_withText: 'Copied "{{text}}"',
   copyFeedback_generic: 'Copied',

@@ -80,6 +80,7 @@ export const ja = {
   settings_syncStatusKeyMismatch: '鍵不一致',
   settings_syncStatusUnavailable: 'iCloud利用不可',
   settings_syncStatusDisabled: '同期オフ',
+  settings_syncStatusQuotaExceeded: 'iCloud容量不足',
   settings_syncLastSynced: '最終同期: {{time}}',
   settings_syncNever: '未同期',
   settings_syncNow: '今すぐ同期',
@@ -158,6 +159,7 @@ export const ja = {
   toast_syncError: '同期に失敗しました',
   toast_syncKeyMismatch: '鍵不一致 ─ iCloud Keychainを確認してください',
   toast_syncUnavailable: 'iCloud利用不可',
+  toast_syncQuotaExceeded: 'iCloudの空き容量が不足しています',
 
   // Copy Feedback
   copyFeedback_withText: '"{{text}}" をコピー',

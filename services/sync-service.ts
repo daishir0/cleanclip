@@ -38,7 +38,8 @@ export type SyncStatus =
   | 'error'
   | 'disabled'
   | 'unavailable'
-  | 'keyMismatch';
+  | 'keyMismatch'
+  | 'quotaExceeded';
 
 export type SyncResult =
   | { kind: 'ok'; pulled: number; pushed: number; total: number; usedFile: boolean }

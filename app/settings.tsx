@@ -41,6 +41,8 @@ export default function SettingsScreen() {
       showToast(t('toast_syncOk', { count: String(result.total) }), 'success');
     } else if (result.kind === 'keyMismatch') {
       showToast(t('toast_syncKeyMismatch'), 'error');
+    } else if (result.kind === 'quotaExceeded') {
+      showToast(t('toast_syncQuotaExceeded'), 'error');
     } else if (result.kind === 'unavailable') {
       showToast(t('toast_syncUnavailable'), 'error');
     } else if (result.kind === 'error') {
@@ -58,10 +60,11 @@ export default function SettingsScreen() {
     ]);
   };
 
-  const statusKey: 'settings_syncStatusIdle' | 'settings_syncStatusSyncing' | 'settings_syncStatusError' | 'settings_syncStatusKeyMismatch' | 'settings_syncStatusUnavailable' | 'settings_syncStatusDisabled' =
+  const statusKey: 'settings_syncStatusIdle' | 'settings_syncStatusSyncing' | 'settings_syncStatusError' | 'settings_syncStatusKeyMismatch' | 'settings_syncStatusUnavailable' | 'settings_syncStatusDisabled' | 'settings_syncStatusQuotaExceeded' =
     syncStatus === 'syncing' ? 'settings_syncStatusSyncing'
     : syncStatus === 'error' ? 'settings_syncStatusError'
     : syncStatus === 'keyMismatch' ? 'settings_syncStatusKeyMismatch'
+    : syncStatus === 'quotaExceeded' ? 'settings_syncStatusQuotaExceeded'
     : syncStatus === 'unavailable' ? 'settings_syncStatusUnavailable'
     : syncStatus === 'disabled' ? 'settings_syncStatusDisabled'
     : 'settings_syncStatusIdle';
@@ -70,12 +73,13 @@ export default function SettingsScreen() {
     syncStatus === 'syncing' ? 'sync'
     : syncStatus === 'error' ? 'cloud-offline-outline'
     : syncStatus === 'keyMismatch' ? 'key-outline'
+    : syncStatus === 'quotaExceeded' ? 'alert-circle-outline'
     : syncStatus === 'unavailable' ? 'cloud-offline-outline'
     : syncStatus === 'disabled' ? 'cloud-outline'
     : 'cloud-done-outline';
 
   const statusIconColor =
-    syncStatus === 'error' || syncStatus === 'keyMismatch' || syncStatus === 'unavailable' ? theme.danger
+    syncStatus === 'error' || syncStatus === 'keyMismatch' || syncStatus === 'unavailable' || syncStatus === 'quotaExceeded' ? theme.danger
     : syncStatus === 'syncing' ? theme.accent
     : syncStatus === 'idle' ? theme.success
     : theme.textSecondary;
