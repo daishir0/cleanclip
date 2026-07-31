@@ -17,6 +17,13 @@ web-build/
 .env
 .env.local
 
+# Local notes with server info (do not publish)
+memo.md
+
+# Local backup files
+*.bak
+*.bak.*
+
 # Generated artifacts (icon/screenshot scripts, screenshots, etc.)
 outputs/
 
