@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '@/contexts/AppContext';
 import { useT } from '@/i18n';
@@ -34,18 +34,19 @@ export function FieldRow({ line, masked, onCopyWord, onCopyLine, onCopyJoined }:
 
   return (
     <View style={[styles.container, { borderBottomColor: theme.border }]}>
-      <View style={styles.wordsContainer}>
+      {masked && (
+        <Pressable onPress={handleReveal} style={styles.revealButton}
+          accessibilityLabel={revealed ? t('fieldRow_hide') : t('fieldRow_reveal')}
+          accessibilityRole="button">
+          <Ionicons name={revealed ? 'eye' : 'eye-off'} size={18} color={theme.textSecondary} />
+        </Pressable>
+      )}
+      <ScrollView horizontal style={styles.wordsScroll} contentContainerStyle={styles.wordsContent}
+        showsHorizontalScrollIndicator keyboardShouldPersistTaps="handled">
         {words.map((word, idx) => (
           <WordChip key={idx} word={word} masked={isMasked} onCopy={onCopyWord} />
         ))}
-        {masked && (
-          <Pressable onPress={handleReveal} style={styles.revealButton}
-            accessibilityLabel={revealed ? t('fieldRow_hide') : t('fieldRow_reveal')}
-            accessibilityRole="button">
-            <Ionicons name={revealed ? 'eye' : 'eye-off'} size={18} color={theme.textSecondary} />
-          </Pressable>
-        )}
-      </View>
+      </ScrollView>
       <Pressable
         onPress={() => onCopyLine(line)}
         onLongPress={() => onCopyJoined(line.replace(/\s+/g, ''))}
@@ -61,8 +62,9 @@ export function FieldRow({ line, masked, onCopyWord, onCopyLine, onCopyJoined }:
 
 const styles = StyleSheet.create({
   container: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderBottomWidth: StyleSheet.hairlineWidth },
-  wordsContainer: { flex: 1, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center' },
-  revealButton: { padding: 6, marginBottom: 6 },
+  wordsScroll: { flex: 1 },
+  wordsContent: { flexDirection: 'row', alignItems: 'center', paddingVertical: 2, paddingBottom: 6 },
+  revealButton: { padding: 6, marginRight: 2 },
   copyBtn: { paddingHorizontal: 14, paddingVertical: 5, borderRadius: 6, marginLeft: 8 },
   copyBtnText: { fontSize: 13, fontWeight: '600' },
 });

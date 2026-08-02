@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
+import { addSpotlightTapListener } from '@/services/spotlight-service';
 import { StatusBar } from 'expo-status-bar';
 import { AppProvider, useApp } from '@/contexts/AppContext';
 import { LocaleProvider, useT } from '@/i18n';
@@ -13,6 +14,13 @@ import { ToastProvider } from '@/components/Toast';
 function NavigationContent() {
   const { isDarkMode } = useApp();
   const { t } = useT();
+  const router = useRouter();
+
+  useEffect(() => {
+    return addSpotlightTapListener(id => {
+      router.navigate({ pathname: '/', params: { focusId: id } });
+    });
+  }, [router]);
 
   return (
     <ThemeProvider value={isDarkMode ? DarkTheme : DefaultTheme}>

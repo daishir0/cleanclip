@@ -6,6 +6,7 @@ import { useApp } from '@/contexts/AppContext';
 import { useT } from '@/i18n';
 import { useToast } from '@/components/Toast';
 import { saveTextToFile } from '@/services/file-service';
+import { listCategories } from '@/utils/categories';
 
 function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).substring(2, 8);
@@ -23,18 +24,37 @@ export default function EntryEditScreen() {
   const [content, setContent] = useState(existingEntry?.content ?? '');
   const [masked, setMasked] = useState(existingEntry?.masked ?? false);
   const [localOnly, setLocalOnly] = useState(existingEntry?.localOnly ?? false);
+  const [category, setCategory] = useState(existingEntry?.category ?? '');
+  const [newCategory, setNewCategory] = useState('');
+  const [showNewCategory, setShowNewCategory] = useState(false);
   const isEditing = !!existingEntry;
+
+  const categoryChips = useMemo(() => {
+    const names = listCategories(entries);
+    const current = category.trim();
+    if (current && !names.includes(current)) names.push(current);
+    return names;
+  }, [entries, category]);
+
+  const handleAddCategory = () => {
+    const trimmed = newCategory.trim();
+    if (trimmed) setCategory(trimmed);
+    setNewCategory('');
+    setShowNewCategory(false);
+  };
 
   const handleSave = async () => {
     if (!name.trim()) { Alert.alert(t('common_error'), t('entryEdit_errorNoName')); return; }
     if (!content.trim()) { Alert.alert(t('common_error'), t('entryEdit_errorNoContent')); return; }
     const now = Date.now();
+    const trimmedCategory = category.trim() || undefined;
     if (isEditing && existingEntry) {
       await updateEntry(existingEntry.id, {
         name: name.trim(),
         content: content.trim(),
         masked,
         localOnly,
+        category: trimmedCategory,
         updatedAt: now,
       });
     } else {
@@ -44,6 +64,7 @@ export default function EntryEditScreen() {
         content: content.trim(),
         masked,
         localOnly,
+        category: trimmedCategory,
         createdAt: now,
         updatedAt: now,
       });
@@ -102,6 +123,52 @@ export default function EntryEditScreen() {
           accessibilityLabel={t('entryEdit_content')}
         />
 
+        <Text style={[styles.label, { color: theme.textSecondary, marginTop: 20 }]}>{t('entryEdit_category')}</Text>
+        <View style={styles.categoryChips}>
+          <Pressable onPress={() => setCategory('')}
+            style={[styles.categoryChip,
+              { backgroundColor: category.trim() === '' ? theme.accent : theme.bgSecondary, borderColor: theme.border }]}
+            accessibilityRole="radio" accessibilityState={{ selected: category.trim() === '' }}>
+            <Text style={[styles.categoryChipText, { color: category.trim() === '' ? '#fff' : theme.text }]}>
+              {t('entryEdit_categoryNone')}
+            </Text>
+          </Pressable>
+          {categoryChips.map(cat => (
+            <Pressable key={cat} onPress={() => setCategory(cat)}
+              style={[styles.categoryChip,
+                { backgroundColor: category.trim() === cat ? theme.accent : theme.bgSecondary, borderColor: theme.border }]}
+              accessibilityRole="radio" accessibilityState={{ selected: category.trim() === cat }}>
+              <Text style={[styles.categoryChipText, { color: category.trim() === cat ? '#fff' : theme.text }]} numberOfLines={1}>
+                {cat}
+              </Text>
+            </Pressable>
+          ))}
+          {!showNewCategory && (
+            <Pressable onPress={() => setShowNewCategory(true)}
+              style={[styles.categoryChip, styles.categoryChipDashed, { borderColor: theme.accent }]}
+              accessibilityRole="button" accessibilityLabel={t('entryEdit_categoryAdd')}>
+              <Ionicons name="add" size={15} color={theme.accent} />
+              <Text style={[styles.categoryChipText, { color: theme.accent }]}>{t('entryEdit_categoryAdd')}</Text>
+            </Pressable>
+          )}
+        </View>
+        {showNewCategory && (
+          <View style={styles.newCategoryRow}>
+            <TextInput
+              style={[styles.input, styles.newCategoryInput, { color: theme.text, backgroundColor: theme.bgSecondary, borderColor: theme.border }]}
+              value={newCategory} onChangeText={setNewCategory}
+              placeholder={t('entryEdit_categoryNewPlaceholder')}
+              placeholderTextColor={theme.textSecondary}
+              autoFocus onSubmitEditing={handleAddCategory} returnKeyType="done"
+              accessibilityLabel={t('entryEdit_categoryNewPlaceholder')}
+            />
+            <Pressable onPress={handleAddCategory} style={[styles.newCategoryBtn, { backgroundColor: theme.accent }]}
+              accessibilityRole="button" accessibilityLabel={t('entryEdit_categoryAdd')}>
+              <Text style={styles.newCategoryBtnText}>{t('entryEdit_categoryAdd')}</Text>
+            </Pressable>
+          </View>
+        )}
+
         <View style={styles.maskRow}>
           <Text style={[styles.maskLabel, { color: theme.textSecondary }]}>{t('entryEdit_maskDisplay')}</Text>
           <Switch value={masked} onValueChange={setMasked}
@@ -154,6 +221,18 @@ const styles = StyleSheet.create({
   label: { fontSize: 13, fontWeight: '600', textTransform: 'uppercase', marginBottom: 8 },
   input: { fontSize: 17, padding: 12, borderRadius: 10, borderWidth: StyleSheet.hairlineWidth },
   textArea: { fontSize: 16, padding: 12, borderRadius: 10, borderWidth: StyleSheet.hairlineWidth, minHeight: 150 },
+  categoryChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  categoryChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 2,
+    paddingHorizontal: 14, paddingVertical: 7, borderRadius: 16,
+    borderWidth: StyleSheet.hairlineWidth, maxWidth: 200,
+  },
+  categoryChipDashed: { borderWidth: 1, borderStyle: 'dashed', backgroundColor: 'transparent' },
+  categoryChipText: { fontSize: 14, fontWeight: '500' },
+  newCategoryRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 },
+  newCategoryInput: { flex: 1, fontSize: 15, paddingVertical: 9 },
+  newCategoryBtn: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10 },
+  newCategoryBtnText: { color: '#fff', fontSize: 14, fontWeight: '600' },
   maskRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 20 },
   maskLabel: { fontSize: 14 },
   localOnlyRow: {

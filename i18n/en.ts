@@ -22,6 +22,7 @@ export const en = {
   entryList_search: 'Search',
   entryList_searchPlaceholder: 'Search entries...',
   entryList_noResults: 'No matching entries',
+  entryList_categoryToggle: 'Toggle category "{{name}}"',
 
   clean_readClipboard: 'Read Clipboard',
   clean_apply: 'Apply',
@@ -53,6 +54,10 @@ export const en = {
   entryEdit_deleteConfirmMessage: 'Delete "{{name}}"? This cannot be undone.',
   entryEdit_errorNoName: 'Please enter an entry name',
   entryEdit_errorNoContent: 'Please enter some content',
+  entryEdit_category: 'Category',
+  entryEdit_categoryNone: 'None',
+  entryEdit_categoryNewPlaceholder: 'New category name',
+  entryEdit_categoryAdd: 'Add',
 
   settings_appearance: 'Appearance',
   settings_darkMode: 'Dark Mode',
@@ -65,6 +70,8 @@ export const en = {
   settings_securityAdpHint: 'For stronger protection, enable iCloud Advanced Data Protection',
   settings_securityScreenshot: 'Screenshots and screen recording are blocked (iOS/iPadOS).',
   settings_securityMacNote: 'Screenshot protection does not work on Mac. Please handle sensitive data with care.',
+  settings_clipboardAutoClear: 'Auto-clear copies',
+  settings_clipboardAutoClearDesc: 'Empties the clipboard 60 seconds after copying',
   settings_dataManagement: 'Data Management',
   settings_icloudSync: 'iCloud Sync',
   settings_icloudSyncDesc: 'Sync entries across devices via iCloud. Data is encrypted on device before upload',

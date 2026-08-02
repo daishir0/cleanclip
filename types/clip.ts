@@ -8,11 +8,18 @@ export type ClipEntry = {
   deletedAt?: number;
   localOnly?: boolean;
   sortKey?: number;
+  category?: string;
 };
 
-export type AppSettings = Record<string, never>;
+export type AppSettings = {
+  clipboardAutoClear?: boolean;
+};
 
-export const DEFAULT_SETTINGS: AppSettings = {};
+export const DEFAULT_SETTINGS: AppSettings = {
+  clipboardAutoClear: true,
+};
+
+export const CLIPBOARD_AUTO_CLEAR_MS = 60_000;
 
 export function isTombstone(e: ClipEntry): boolean {
   return typeof e.deletedAt === 'number' && e.deletedAt > 0;

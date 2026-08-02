@@ -10,6 +10,8 @@ import {
   loadAllEntriesIncludingDeleted,
 } from '@/services/storage-service';
 import { deleteEncryptionKey, deleteSyncMasterKey } from '@/services/crypto-service';
+import { sweepExpiredClipboard } from '@/services/clipboard-service';
+import { updateSpotlightIndex, clearSpotlightIndex } from '@/services/spotlight-service';
 import {
   isCloudSyncAvailable,
   isSyncEnabled as readSyncEnabled,
@@ -130,7 +132,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         loadDarkMode(),
       ]);
       if (savedAll.length) setAllEntries(savedAll);
-      if (savedSettings) setSettings(savedSettings);
+      if (savedSettings) setSettings({ ...DEFAULT_SETTINGS, ...savedSettings });
       if (savedDark !== null) setIsDarkMode(savedDark);
       try { await gcOldTombstones(); } catch {}
 
@@ -147,6 +149,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const theme = getTheme(isDarkMode);
+
+  useEffect(() => {
+    if (!loaded) return;
+    const timer = setTimeout(() => {
+      updateSpotlightIndex(visibleEntries);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [loaded, visibleEntries]);
 
   const reloadFromStorage = useCallback(async () => {
     const all = await loadAllEntriesIncludingDeleted();
@@ -210,6 +220,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const handleAppStateChange = (state: AppStateStatus) => {
       if (state !== 'active') return;
+      sweepExpiredClipboard().catch(() => {});
       if (!syncEnabledRef.current) return;
       const since = Date.now() - lastSyncAttemptRef.current;
       if (since < AUTOSYNC_MIN_INTERVAL_MS) return;
@@ -311,6 +322,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setSettings(DEFAULT_SETTINGS);
     await deleteAllData();
     await deleteEncryptionKey();
+    await clearSpotlightIndex();
     if (isCloudSyncAvailable()) {
       try { await clearAllCloudData(); } catch {}
       try { await deleteSyncMasterKey(); } catch {}

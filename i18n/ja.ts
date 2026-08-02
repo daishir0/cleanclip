@@ -24,6 +24,7 @@ export const ja = {
   entryList_search: '検索',
   entryList_searchPlaceholder: 'エントリを検索...',
   entryList_noResults: '一致するエントリがありません',
+  entryList_categoryToggle: 'カテゴリ「{{name}}」を開閉',
 
   // Clean Screen
   clean_readClipboard: 'クリップボードを読み込む',
@@ -57,6 +58,10 @@ export const ja = {
   entryEdit_deleteConfirmMessage: '「{{name}}」を削除しますか？この操作は取り消せません。',
   entryEdit_errorNoName: 'エントリ名を入力してください',
   entryEdit_errorNoContent: '内容を入力してください',
+  entryEdit_category: 'カテゴリ',
+  entryEdit_categoryNone: 'なし',
+  entryEdit_categoryNewPlaceholder: '新しいカテゴリ名',
+  entryEdit_categoryAdd: '追加',
 
   // Settings
   settings_appearance: '外観',
@@ -70,6 +75,8 @@ export const ja = {
   settings_securityAdpHint: 'さらに強固に：iCloud 詳細データ保護（ADP）の有効化を推奨',
   settings_securityScreenshot: 'スクリーンショットと画面録画はブロックされます（iOS/iPadOS）。',
   settings_securityMacNote: 'Mac版ではスクリーンショット防止が機能しません。機密データの取扱いにご注意ください。',
+  settings_clipboardAutoClear: 'コピーを自動消去',
+  settings_clipboardAutoClearDesc: 'コピーから60秒後にクリップボードを自動的に空にします',
   settings_dataManagement: 'データ管理',
   settings_icloudSync: 'iCloud同期',
   settings_icloudSyncDesc: 'iCloudを使ってデバイス間でエントリを同期。データは端末で暗号化されてから送信されます',

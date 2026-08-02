@@ -38,7 +38,7 @@ export function WordChip({ word, masked, onCopy }: WordChipProps) {
 const styles = StyleSheet.create({
   chip: {
     paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth, marginRight: 6, marginBottom: 6,
+    borderWidth: StyleSheet.hairlineWidth, marginRight: 6,
   },
   chipText: { fontSize: 15, fontFamily: 'System' },
 });

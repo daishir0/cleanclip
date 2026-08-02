@@ -46,7 +46,7 @@ export function DraggableFab({ onPress, bottomInset, backgroundColor, accessibil
       minX: EDGE_MARGIN,
       maxX: Math.max(EDGE_MARGIN, layout.w - FAB_SIZE - EDGE_MARGIN),
       minY: EDGE_MARGIN,
-      maxY: Math.max(EDGE_MARGIN, layout.h - FAB_SIZE - bottomInsetRef.current - 16),
+      maxY: Math.max(EDGE_MARGIN, layout.h - FAB_SIZE),
     };
   }, []);
 
@@ -68,7 +68,7 @@ export function DraggableFab({ onPress, bottomInset, backgroundColor, accessibil
       y = b.minY + ratioRef.current.yr * (b.maxY - b.minY);
     } else {
       x = b.maxX - (20 - EDGE_MARGIN);
-      y = b.maxY;
+      y = layoutRef.current.h - FAB_SIZE - bottomInsetRef.current - 16;
     }
     const clamped = clamp(x, y);
     posRef.current = clamped;

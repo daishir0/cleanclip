@@ -13,7 +13,7 @@ const ADP_HELP_URL = 'https://support.apple.com/HT212520';
 
 export default function SettingsScreen() {
   const {
-    isDarkMode, toggleDarkMode, deleteAllEntries, theme,
+    isDarkMode, toggleDarkMode, deleteAllEntries, theme, settings, updateSettings,
     syncStatus, syncEnabled, syncAvailable, lastSyncAt, triggerSync, setSyncEnabled,
   } = useApp();
   const { t, locale, setLocale } = useT();
@@ -174,7 +174,17 @@ export default function SettingsScreen() {
 
       <Text style={[styles.sectionHeader, { color: theme.textSecondary }]}>{t('settings_security')}</Text>
       <View style={[styles.section, { backgroundColor: theme.bgSecondary, borderColor: theme.border }]}>
-        <View style={styles.infoRow}>
+        <View style={styles.row}>
+          <View style={styles.rowLabel}>
+            <Text style={[styles.rowTitle, { color: theme.text }]}>{t('settings_clipboardAutoClear')}</Text>
+            <Text style={[styles.rowSubtitle, { color: theme.textSecondary }]}>{t('settings_clipboardAutoClearDesc')}</Text>
+          </View>
+          <Switch value={settings.clipboardAutoClear !== false}
+            onValueChange={val => updateSettings({ ...settings, clipboardAutoClear: val })}
+            trackColor={{ false: theme.border, true: theme.accent }}
+            accessibilityLabel={t('settings_clipboardAutoClear')} />
+        </View>
+        <View style={[styles.infoRow, { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.border }]}>
           <Ionicons name="shield-checkmark" size={20} color={theme.success} />
           <Text style={[styles.infoText, { color: theme.textSecondary }]}>{t('settings_securityEncryption')}</Text>
         </View>
